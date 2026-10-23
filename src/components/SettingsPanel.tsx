@@ -1,5 +1,6 @@
 "use client";
 
+import { PREF, useBoolPref, usePref } from "@/lib/prefs";
 import { ProviderStatus } from "./ProviderStatus";
 import { TextSize, Theme, useSettings } from "./SettingsProvider";
 
@@ -18,7 +19,7 @@ export function SettingsPanel() {
       <fieldset className="flex flex-col gap-2">
         <legend className="font-bold mb-1">Theme</legend>
         <div className="flex gap-3">
-          {(["light", "dark"] as Theme[]).map((option) => (
+          {(["hud", "dark", "light"] as Theme[]).map((option) => (
             <button
               key={option}
               type="button"
@@ -30,10 +31,18 @@ export function SettingsPanel() {
                   : "border-[var(--border)]"
               }`}
             >
-              {option}
+              {option === "hud" ? "Sci-fi" : option}
             </button>
           ))}
         </div>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="font-bold mb-1">Experience</legend>
+        <Toggle label="Sounds" prefKey={PREF.sound} />
+        <Toggle label="Animations" prefKey={PREF.motion} />
+        <Toggle label="Speak answers aloud" prefKey={PREF.speak} />
+        <LanguagePick />
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">
@@ -59,5 +68,46 @@ export function SettingsPanel() {
 
       <ProviderStatus />
     </section>
+  );
+}
+
+function Toggle({ label, prefKey }: { label: string; prefKey: string }) {
+  const [on, setOn] = useBoolPref(prefKey, true);
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={() => setOn(!on)}
+      className="touch-target rounded-lg border-2 border-[var(--border)] px-4 font-bold flex justify-between items-center"
+    >
+      <span>{label}</span>
+      <span>{on ? "On" : "Off"}</span>
+    </button>
+  );
+}
+
+function LanguagePick() {
+  const [lang, setLang] = usePref(PREF.lang, "en");
+  return (
+    <div className="flex gap-3" role="group" aria-label="Voice language">
+      {[
+        ["en", "English"],
+        ["ur", "اردو (Urdu)"],
+      ].map(([value, label]) => (
+        <button
+          key={value}
+          type="button"
+          aria-pressed={lang === value}
+          onClick={() => setLang(value)}
+          className={`touch-target flex-1 rounded-lg border-2 px-3 font-bold ${
+            lang === value
+              ? "bg-[var(--accent)] text-[var(--accent-foreground)] border-[var(--accent)]"
+              : "border-[var(--border)]"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
   );
 }

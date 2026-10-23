@@ -26,6 +26,21 @@ everything else come in later milestones.
 - A single "ask a question" box on the home page that proves the whole
   pipeline: your text → the app's server → Gemini → back to your screen.
 
+## What's in Milestone 1
+
+- Voice: tap the mic, speak, and the answer is read aloud (Chrome's speech
+  recognition and speech synthesis; English or Urdu, set in Settings).
+- Camera: turn it on and every question includes the current view. Modes:
+  Read, Medicine, Ad decoder, Math. Frames are resized on the phone and sent
+  only to providers that can see images (Gemini, OpenRouter).
+- Sci-fi cockpit theme with synthesized sounds (no audio files), plus
+  switches for sound, animations and spoken answers. Animations also stop
+  when the phone's reduced-motion setting is on.
+- Kid mode: simple friendly prompts, no camera, nothing saved, and a
+  4-digit parent PIN to leave it. The PIN only stops children tapping out;
+  it is stored on the phone and is not strong security. Kid text still goes
+  to free providers that may train on it, so keep real names and photos out.
+
 ## Running it on your own computer
 
 You need [Node.js](https://nodejs.org) 18 or later installed.

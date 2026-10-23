@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useSyncExternalStore } from "react";
 
-export type Theme = "light" | "dark";
+export type Theme = "light" | "dark" | "hud";
 export type TextSize = "normal" | "large" | "x-large" | "xx-large";
 
 const THEME_KEY = "seefar:theme";
@@ -44,8 +44,8 @@ function writeAttr(name: string, value: string, storageKey: string) {
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const theme = useSyncExternalStore(
     subscribe,
-    () => readAttr<Theme>("data-theme", "light"),
-    () => "light" as Theme
+    () => readAttr<Theme>("data-theme", "hud"),
+    () => "hud" as Theme
   );
   const textSize = useSyncExternalStore(
     subscribe,
@@ -77,7 +77,7 @@ export const NO_FLASH_SCRIPT = `
 (function () {
   try {
     var theme = localStorage.getItem("${THEME_KEY}");
-    if (!theme) theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    if (!theme) theme = "hud";
     var size = localStorage.getItem("${TEXT_SIZE_KEY}") || "normal";
     document.documentElement.setAttribute("data-theme", theme);
     document.documentElement.setAttribute("data-text-size", size);

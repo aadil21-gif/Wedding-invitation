@@ -20,6 +20,16 @@
   --border: #e0e0e0;
 }
 
+:root[data-theme="hud"] {
+  /* Neon on near-black: cyan on this background is well above 7:1 contrast. */
+  --background: #02060f;
+  --foreground: #e6fbff;
+  --surface: #06182a;
+  --accent: #00e5ff;
+  --accent-foreground: #00141a;
+  --border: #00b8d4;
+}
+
 :root[data-text-size="large"] {
   --font-scale: 1.15;
 }
@@ -61,4 +71,145 @@ body {
 :focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
+}
+
+
+/* ---------- Sci-fi HUD ---------- */
+.hud-root,
+.kid-skin {
+  background: var(--background);
+  position: relative;
+}
+.hud-root::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0, 229, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 229, 255, 0.06) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+.hud-root > *,
+.kid-skin > * {
+  position: relative;
+}
+.hud-title {
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.hud-panel,
+.hud-user,
+.hud-input {
+  border: 2px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  color: var(--foreground);
+}
+.hud-panel {
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.hud-user {
+  border-style: dashed;
+}
+.hud-error {
+  border-color: #ff5c5c;
+}
+.hud-button,
+.hud-chip,
+.hud-mic {
+  border: 2px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+}
+.hud-button:hover,
+.hud-chip.is-active,
+.hud-mic.is-live {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.hud-mic {
+  box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* The orb: state is shown by colour AND label, never colour alone. */
+.orb {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff 0%, var(--accent) 35%, #003b4a 100%);
+  box-shadow: 0 0 30px var(--accent), 0 0 70px color-mix(in srgb, var(--accent) 50%, transparent);
+  animation: orb-idle 3s ease-in-out infinite;
+}
+.orb[data-state="listening"] {
+  animation: orb-listen 0.9s ease-in-out infinite;
+  filter: hue-rotate(80deg);
+}
+.orb[data-state="thinking"] {
+  animation: orb-think 1.2s linear infinite;
+  filter: hue-rotate(-60deg);
+}
+.orb[data-state="speaking"] {
+  animation: orb-speak 0.5s ease-in-out infinite;
+  filter: hue-rotate(35deg);
+}
+@keyframes orb-idle {
+  50% { transform: scale(1.05); }
+}
+@keyframes orb-listen {
+  50% { transform: scale(1.18); }
+}
+@keyframes orb-think {
+  from { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(0.92); }
+  to { transform: rotate(360deg) scale(1); }
+}
+@keyframes orb-speak {
+  50% { transform: scale(1.1); }
+}
+[data-motion="off"] .orb,
+[data-motion="off"].orb {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .orb { animation: none !important; }
+}
+
+/* ---------- Kid mode: bright, big, friendly ---------- */
+.kid-skin {
+  --background: #fff7d6;
+  --foreground: #2b1b5a;
+  --surface: #ffffff;
+  --accent: #7c3aed;
+  --accent-foreground: #ffffff;
+  --border: #7c3aed;
+  color: var(--foreground);
+}
+.kid-skin .hud-title {
+  color: #d9480f;
+  text-shadow: none;
+}
+.kid-skin .hud-panel,
+.kid-skin .hud-user,
+.kid-skin .hud-input {
+  background: #ffffff;
+  box-shadow: none;
+}
+.kid-skin .hud-button,
+.kid-skin .hud-mic {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  box-shadow: none;
+}
+.kid-skin .orb {
+  background: radial-gradient(circle at 35% 30%, #fff 0%, #ff8fab 35%, #7c3aed 100%);
+  box-shadow: 0 0 24px #ff8fab;
+}
+.kid-card {
+  border: 3px solid #ff8fab;
+  background: #ffffff;
+  color: #2b1b5a;
+}
+.kid-card:hover {
+  background: #ffe3ec;
 }
