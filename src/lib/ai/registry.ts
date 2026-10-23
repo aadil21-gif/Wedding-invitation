@@ -1,6 +1,14 @@
 import { FEATURE_PROVIDER_ORDER, PROVIDER_CONFIG } from "./config";
 import { createGeminiProvider } from "./providers/gemini";
-import { AIFeature, AIProvider, ChatRequest, ChatResponse, RateLimitError } from "./types";
+import {
+  AIFeature,
+  AIProvider,
+  ChatRequest,
+  ChatResponse,
+  ProviderUnavailableError,
+  RateLimitError,
+  UnavailableReason,
+} from "./types";
 
 function buildProvider(id: string): AIProvider | null {
   switch (id) {
@@ -15,13 +23,26 @@ function buildProvider(id: string): AIProvider | null {
 }
 
 export interface ChatResult extends ChatResponse {
-  /** True if no configured provider could answer (keys missing / all rate-limited). */
+  /** True if no configured provider could answer. */
   unavailable?: boolean;
+  /** Why nothing answered, so the app can say something accurate. */
+  reason?: UnavailableReason;
+}
+
+function reasonFor(err: unknown): UnavailableReason {
+  if (err instanceof RateLimitError) return "rate_limited";
+  if (err instanceof ProviderUnavailableError) {
+    if (err.status === 401 || err.status === 403) return "key_rejected";
+    // Google reports a rejected key as 400 API_KEY_INVALID.
+    if (err.status === 400 && /API key/i.test(err.message)) return "key_rejected";
+    if (err.status === 500 || err.status === 503) return "busy";
+  }
+  return "error";
 }
 
 /**
  * Routes a chat request to the first available, allowed provider for the
- * given feature, falling back on 429s. Enforces the health-data privacy
+ * given feature, falling back on failures. Enforces the health-data privacy
  * rule: health features may only use no_train providers unless the caller
  * explicitly allows free providers.
  */
@@ -36,15 +57,18 @@ export async function routeChat(
     chain = chain.filter((id) => PROVIDER_CONFIG[id]?.dataPolicy === "no_train");
   }
 
+  let reason: UnavailableReason = "no_key";
+
   for (const id of chain) {
     const provider = buildProvider(id);
     if (!provider) continue;
     try {
       return await provider.chat(request);
     } catch (err) {
-      // Rate limit or any other provider failure: fall through to the next
-      // provider in the chain rather than failing the whole feature.
+      // Any provider failure: fall through to the next provider in the chain
+      // rather than failing the whole feature, but remember why.
       console.error(`[ai] ${id} failed`, err instanceof RateLimitError ? "rate-limited" : err);
+      reason = reasonFor(err);
       continue;
     }
   }
@@ -54,5 +78,6 @@ export async function routeChat(
     providerId: "none",
     modelId: "none",
     unavailable: true,
+    reason,
   };
 }

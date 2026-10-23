@@ -8,7 +8,11 @@ import type { DataPolicy, ProviderCapabilities } from "./types";
  */
 export interface ProviderConfig {
   id: string;
-  modelId: string;
+  /**
+   * Models to try in order. When the first is overloaded (503) or rate
+   * limited (429), the next one is tried on the same key.
+   */
+  modelIds: string[];
   dataPolicy: DataPolicy;
   capabilities: ProviderCapabilities;
   /** Where this entry's modelId/dataPolicy/capabilities were confirmed. */
@@ -19,9 +23,11 @@ export interface ProviderConfig {
 export const PROVIDER_CONFIG: Record<string, ProviderConfig> = {
   gemini: {
     id: "gemini",
-    // "Model code: gemini-3.8-flash", listed as the current stable,
-    // vision-capable, free-tier model for new projects.
-    modelId: "gemini-3.8-flash",
+    // All three are listed as Stable on the models page and as "Free of
+    // charge" on the pricing page (verified 2026-10-23). The Flash-Lite
+    // model's image-input support is NOT stated in the docs: check it before
+    // using it for the vision feature in M1.
+    modelIds: ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"],
     // Free-tier pricing page: "Used to improve our products: Yes" for this
     // model. Paid tier would be no_train — this app never uses the paid tier.
     dataPolicy: "may_train",

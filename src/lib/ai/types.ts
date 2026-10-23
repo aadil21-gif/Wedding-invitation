@@ -51,9 +51,15 @@ export class RateLimitError extends Error {
   }
 }
 
+export type UnavailableReason = "no_key" | "busy" | "rate_limited" | "key_rejected" | "error";
+
 export class ProviderUnavailableError extends Error {
-  constructor(providerId: string, cause?: unknown) {
+  /** HTTP status from the provider, when it gave one. */
+  readonly status?: number;
+
+  constructor(providerId: string, cause?: unknown, status?: number) {
     super(`${providerId} unavailable: ${cause instanceof Error ? cause.message : String(cause)}`);
     this.name = "ProviderUnavailableError";
+    this.status = status;
   }
 }

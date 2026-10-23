@@ -27,11 +27,15 @@ export async function POST(request: NextRequest) {
   });
 
   if (result.unavailable) {
+    const messages: Record<string, string> = {
+      no_key: "No AI key is set on this deployment. Add GEMINI_API_KEY in Vercel and redeploy.",
+      busy: "Google's AI is overloaded right now. Wait a few seconds and ask again.",
+      rate_limited: "The free AI limit was reached for now. Wait a minute and ask again.",
+      key_rejected: "Google rejected the API key. Check GEMINI_API_KEY in Vercel, then redeploy.",
+      error: "The AI request failed. Try again, and check the server logs if it keeps happening.",
+    };
     return NextResponse.json(
-      {
-        error:
-          "AI unavailable right now — no provider key is configured, or all providers are rate-limited.",
-      },
+      { error: messages[result.reason ?? "error"] ?? messages.error },
       { status: 503 }
     );
   }
