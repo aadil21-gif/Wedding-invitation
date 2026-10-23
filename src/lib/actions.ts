@@ -1,6 +1,7 @@
 "use client";
 
 import type { Action } from "./agent/types";
+import { dance, moveFor, robotConnected, setFace, stopDriving } from "./robot";
 import { dataOps } from "./store";
 
 export interface LaunchLink {
@@ -95,6 +96,18 @@ export function executeActions(actions: Action[]): ActionOutcome {
           href: `https://music.youtube.com/search?q=${encodeURIComponent(a.query)}`,
         });
         break;
+      case "robot": {
+        if (!robotConnected()) {
+          out.chips.push("ROBOT NOT CONNECTED");
+          break;
+        }
+        if (a.mood) setFace(a.mood);
+        if (a.cmd === "stop") stopDriving();
+        else if (a.cmd === "dance") dance();
+        else if (a.cmd !== "face") moveFor(a.cmd, a.seconds);
+        out.chips.push(`ROBOT · ${a.cmd.toUpperCase()}${a.cmd === "face" ? "" : a.cmd === "stop" || a.cmd === "dance" ? "" : ` ${a.seconds}s`}`);
+        break;
+      }
       case "open":
         out.links.push({ label: "OPEN LINK", sub: new URL(a.url).host, href: a.url });
         break;

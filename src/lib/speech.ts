@@ -22,6 +22,14 @@ export interface Recognizer {
 }
 
 export type VoiceLang = "en" | "ur";
+export type VoiceStyle = "natural" | "robot" | "cartoon";
+
+/** Pitch and speed per style. Robot stays close to normal speed so answers remain clear. */
+const STYLE: Record<VoiceStyle, { pitch: number; rate: number }> = {
+  natural: { pitch: 1, rate: 1 },
+  robot: { pitch: 0.55, rate: 0.95 },
+  cartoon: { pitch: 1.75, rate: 1.1 },
+};
 const BCP47: Record<VoiceLang, string> = { en: "en-US", ur: "ur-PK" };
 
 export function recognitionSupported(): boolean {
@@ -56,7 +64,7 @@ export function stopSpeaking() {
 }
 
 /** Reads text aloud. Markdown symbols are stripped so they are not spoken. */
-export function speak(text: string, lang: VoiceLang, onEnd?: () => void) {
+export function speak(text: string, lang: VoiceLang, onEnd?: () => void, style: VoiceStyle = "natural") {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) {
     onEnd?.();
     return;
@@ -69,6 +77,8 @@ export function speak(text: string, lang: VoiceLang, onEnd?: () => void) {
   }
   const u = new SpeechSynthesisUtterance(clean);
   u.lang = BCP47[lang];
+  u.pitch = STYLE[style].pitch;
+  u.rate = STYLE[style].rate;
   const voice = window.speechSynthesis
     .getVoices()
     .find((v) => v.lang.toLowerCase().startsWith(lang));

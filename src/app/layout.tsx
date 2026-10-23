@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Atkinson_Hyperlegible, Orbitron } from "next/font/google";
+import { Atkinson_Hyperlegible, Fredoka, Orbitron } from "next/font/google";
 import "./globals.css";
 import { SettingsProvider, NO_FLASH_SCRIPT } from "@/components/SettingsProvider";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
@@ -18,6 +18,12 @@ const displayFont = Orbitron({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["500", "700"],
+});
+
+// Rounded, friendly font used for headings only while kid mode is on.
+const kidFont = Fredoka({
+  variable: "--font-kid",
+  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
@@ -43,7 +49,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${bodyFont.variable} ${displayFont.variable} h-full`} suppressHydrationWarning>
+    <html lang="en" className={`${bodyFont.variable} ${displayFont.variable} ${kidFont.variable} h-full`} suppressHydrationWarning>
       <head>
         {/* Runs before paint so the stored theme/text-size apply with no flash. */}
         <script dangerouslySetInnerHTML={{ __html: NO_FLASH_SCRIPT }} />

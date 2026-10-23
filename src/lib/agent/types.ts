@@ -28,7 +28,23 @@ export type Action =
   | { type: "list_add"; list: string; item: string }
   | { type: "remember"; fact: string }
   | { type: "camera" }
-  | { type: "open"; url: string };
+  | { type: "open"; url: string }
+  | {
+      type: "robot";
+      cmd: "forward" | "back" | "left" | "right" | "spin" | "stop" | "dance" | "face";
+      seconds: number;
+      mood?: Mood;
+    };
+
+export type Mood =
+  | "neutral"
+  | "happy"
+  | "excited"
+  | "curious"
+  | "sad"
+  | "surprised"
+  | "sleepy"
+  | "love";
 
 /** What the phone tells the server about itself each turn. */
 export interface DeviceContext {
@@ -41,10 +57,14 @@ export interface DeviceContext {
   notes: string[];
   timers: { label: string; secondsLeft: number }[];
   reminders: { text: string; at: string }[];
+  /** Present only when the robot body is connected. */
+  robot?: { distanceCm: number | null; cliff: boolean; lifted: boolean };
 }
 
 export interface AgentReply {
   say: string;
   actions: Action[];
   cards: Card[];
+  /** Facial expression for the on-screen face and the robot's own screen. */
+  mood?: Mood;
 }

@@ -71,6 +71,15 @@ function cleanContext(raw: unknown): DeviceContext {
       }))
     : [];
 
+  const rb = c.robot && typeof c.robot === "object" ? (c.robot as Record<string, unknown>) : null;
+  const robot = rb
+    ? {
+        distanceCm: typeof rb.distanceCm === "number" ? Math.round(rb.distanceCm) : null,
+        cliff: rb.cliff === true,
+        lifted: rb.lifted === true,
+      }
+    : undefined;
+
   return {
     nowIso: now,
     timeZone: tz,
@@ -81,6 +90,7 @@ function cleanContext(raw: unknown): DeviceContext {
     notes: strList(c.notes, 8, 160),
     timers,
     reminders,
+    robot,
   };
 }
 
@@ -118,8 +128,14 @@ export async function POST(request: NextRequest) {
     kid,
     lang,
     image,
-    // Kid mode never receives personal memory, notes or location.
-    ctx: kid ? cleanContext({ nowIso: body?.context?.nowIso, timeZone: body?.context?.timeZone }) : cleanContext(body?.context),
+    // Kid mode never receives personal memory, notes or location (robot state is fine).
+    ctx: kid
+      ? cleanContext({
+          nowIso: body?.context?.nowIso,
+          timeZone: body?.context?.timeZone,
+          robot: body?.context?.robot,
+        })
+      : cleanContext(body?.context),
   });
 
   if (!outcome.ok) {

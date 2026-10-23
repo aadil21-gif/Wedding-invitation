@@ -12,6 +12,8 @@ export const PREF = {
   pin: "seefar:parent-pin",
   handsfree: "seefar:handsfree",
   loc: "seefar:loc",
+  voice: "seefar:voice",
+  face: "seefar:face",
 } as const;
 
 const listeners = new Set<() => void>();

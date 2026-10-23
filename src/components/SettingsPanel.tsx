@@ -1,6 +1,7 @@
 "use client";
 
 import { PREF, useBoolPref, usePref } from "@/lib/prefs";
+import { speak } from "@/lib/speech";
 import { ProviderStatus } from "./ProviderStatus";
 import { TextSize, Theme, useSettings } from "./SettingsProvider";
 
@@ -42,6 +43,8 @@ export function SettingsPanel() {
         <Toggle label="Sounds" prefKey={PREF.sound} />
         <Toggle label="Animations" prefKey={PREF.motion} />
         <Toggle label="Speak answers aloud" prefKey={PREF.speak} />
+        <VoicePick />
+        <Toggle label="Cartoon robot face instead of reactor" prefKey={PREF.face} def={false} />
         <Toggle label="Always listen for “Hey SeeFar”" prefKey={PREF.handsfree} def={false} />
         <p className="text-sm opacity-70">
           Only works while SeeFar is open with the screen on. It uses the mic continuously, drains
@@ -137,4 +140,43 @@ function AlertsButton() {
       </p>
     </div>
   );
+}
+
+function VoicePick() {
+  const [voice, setVoice] = usePref(PREF.voice, "robot");
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="font-bold">Voice style</span>
+      <div className="flex gap-3" role="group" aria-label="Voice style">
+        {[
+          ["robot", "Robot"],
+          ["natural", "Natural"],
+          ["cartoon", "Cartoon"],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={voice === value}
+            onClick={() => {
+              setVoice(value);
+              speakPreview(value);
+            }}
+            className={`touch-target flex-1 rounded-lg border-2 px-3 font-bold ${
+              voice === value
+                ? "bg-[var(--accent)] text-[var(--accent-foreground)] border-[var(--accent)]"
+                : "border-[var(--border)]"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <p className="text-sm opacity-70">Kid mode always uses the cartoon voice.</p>
+    </div>
+  );
+}
+
+function speakPreview(style: string) {
+  const s = style === "natural" || style === "cartoon" ? style : "robot";
+  speak("Beep boop. This is my voice.", "en", undefined, s);
 }

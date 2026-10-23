@@ -7,7 +7,7 @@ import { PREF, readPref } from "./prefs";
  * Browsers only allow audio after a tap, so the app unlocks it from the
  * "power up" button before anything else plays.
  */
-export type Sfx = "boot" | "listen" | "send" | "reply" | "error" | "snap" | "kid" | "tick" | "alarm" | "wake";
+export type Sfx = "boot" | "listen" | "send" | "reply" | "error" | "snap" | "kid" | "tick" | "alarm" | "wake" | "chatter" | "giggle" | "ouch" | "whee";
 
 let ctx: AudioContext | null = null;
 
@@ -88,6 +88,21 @@ export function play(name: Sfx) {
         tone(c, t + i * 0.45, 1400, 0.16, "square", 0.08);
         tone(c, t + i * 0.45 + 0.2, 1000, 0.16, "square", 0.08);
       }
+      break;
+    case "chatter": {
+      // quick robot "blip-bloop" before it talks
+      const notes = [880, 1320, 660, 1100, 990];
+      notes.forEach((f, i) => tone(c, t + i * 0.055, f, 0.05, "square", 0.035));
+      break;
+    }
+    case "giggle":
+      [700, 900, 700, 1000, 800, 1100].forEach((f, i) => tone(c, t + i * 0.07, f, 0.06, "triangle", 0.07));
+      break;
+    case "ouch":
+      tone(c, t, 500, 0.15, "square", 0.06, 200);
+      break;
+    case "whee":
+      tone(c, t, 400, 0.45, "sine", 0.08, 1600);
       break;
     case "kid":
       [523, 659, 784, 1046].forEach((f, i) => tone(c, t + i * 0.09, f, 0.14, "triangle", 0.08));

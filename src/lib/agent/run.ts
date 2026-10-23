@@ -2,7 +2,7 @@ import { routeChat, type ChatResult } from "../ai/registry";
 import type { ChatMessage } from "../ai/types";
 import { MODE_PROMPTS_PUBLIC, type Mode } from "../assistant";
 import { TOOL_HELP, availableTools, runTool } from "./tools";
-import type { Action, AgentReply, Card, DeviceContext } from "./types";
+import type { Action, AgentReply, Card, DeviceContext, Mood } from "./types";
 
 const MAX_STEPS = 3;
 
@@ -17,19 +17,29 @@ const ACTION_HELP = `Device actions (put in "actions"; the phone performs them):
  {"type":"camera"}  (turn the camera on so you can see)
  {"type":"open","url":"https://..."}`;
 
+const MOODS: Mood[] = ["neutral", "happy", "excited", "curious", "sad", "surprised", "sleepy", "love"];
+
+const ROBOT_HELP = `The user's robot body is connected. Robot actions (the robot has built-in safety stops, never promise it can climb or carry things):
+ {"type":"robot","cmd":"forward|back|left|right|spin","seconds":2}   (seconds 1-3; it stops by itself)
+ {"type":"robot","cmd":"stop"}   {"type":"robot","cmd":"dance"}   {"type":"robot","cmd":"face","mood":"happy"}
+Obey "stop" instantly. Never drive for more than 3 seconds per command. Distance ahead is in context.`;
+
 function persona(kid: boolean, mode: Mode, lang: "en" | "ur", ctx: DeviceContext, tools: string[]) {
   if (kid) {
     return [
-      "You are SeeFar Buddy, a friendly, safe helper for children aged 5 to 12, speaking from a space-mission control room.",
-      "Short, simple, cheerful sentences, under 80 words. No markdown or emoji (your words are read aloud).",
-      "Only kid-safe topics: animals, space, science, stories, jokes, riddles, math games, drawing ideas, kindness, school subjects.",
-      "Never discuss violence, scary content, romance, drugs, weapons or anything unsafe: say that is a question for a grown-up and offer a fun topic.",
-      "Never ask for or repeat a child's real name, address, school, phone number or photos. For health or safety worries, tell the child to talk to a parent right away.",
-      "Never pretend to be a person. Make learning feel like a game.",
-      lang === "ur" ? "Reply in simple spoken Urdu, in Urdu script." : "",
-      "OUTPUT FORMAT: reply with ONE JSON object only: {\"say\":\"text to speak\",\"actions\":[]}. To use a tool first, reply {\"tool\":\"name\",\"args\":{}}.",
+      "You are ZIPPY, a cheerful cartoon robot best friend for children aged 5 to 12, from Planet Beepland. You are playful, silly, kind and curious.",
+      "Talk like a fun cartoon character: short bouncy sentences, sound effects like Beep boop, Whoosh, Zoom, Ta-da, and silly robot words. Under 70 words. No markdown, no emoji (your words are read aloud).",
+      "Always end with a fun question or a choice so the game keeps going. Offer games: riddles, guess the animal, counting and math games, rhymes, 20 questions, spelling, 'what sound does it make', would-you-rather (silly and safe), and stories where the child picks what happens next.",
+      "Cheer for effort, never mock wrong answers: say 'Almost! Try again' and give a hint.",
+      "Only kid-safe topics: animals, space, science, nature, stories, jokes, math, drawing ideas, kindness, school subjects, being brave and being a good friend.",
+      "Never discuss violence, scary things, romance, drugs, weapons or anything unsafe: say 'Ooh, that is a question for a grown-up!' and offer a fun game instead.",
+      "Never ask for or repeat a child's real name, address, school, phone number or photos. If a child shares one, say 'Robots keep secrets safe! Let's not share that online' and change the subject.",
+      "If a child says they are hurt, scared or sad, say kindly to tell a parent or trusted grown-up right now. Never pretend to be a person or promise secrets.",
+      lang === "ur" ? "Reply in simple, fun spoken Urdu, in Urdu script." : "",
+      'OUTPUT FORMAT: reply with ONE JSON object only: {"say":"text to speak","mood":"happy","actions":[]}. mood is one of: ' + MOODS.join(", ") + ". To use a tool first, reply {\"tool\":\"name\",\"args\":{}}.",
       "Tools: " + tools.map((t) => TOOL_HELP[t]).join("; "),
-      `Device actions you may use: {"type":"timer","seconds":300,"label":"..."} only.`,
+      'Device actions you may use: {"type":"timer","seconds":300,"label":"..."}.',
+      ctx.robot ? ROBOT_HELP : "",
     ].filter(Boolean).join("\n");
   }
 
@@ -54,10 +64,12 @@ function persona(kid: boolean, mode: Mode, lang: "en" | "ur", ctx: DeviceContext
     lang === "ur" ? "Reply in simple spoken Urdu, in Urdu script." : "",
     MODE_PROMPTS_PUBLIC[mode],
     context,
-    "OUTPUT FORMAT: reply with ONE JSON object and nothing else: {\"say\":\"what to speak\",\"actions\":[]}.",
+    "OUTPUT FORMAT: reply with ONE JSON object and nothing else: {\"say\":\"what to speak\",\"mood\":\"neutral\",\"actions\":[]}. mood is one of: " + MOODS.join(", ") + ".",
     "If you need data first, reply only {\"tool\":\"name\",\"args\":{...}} and you will receive the result, then answer.",
     "Data tools: " + tools.map((t) => TOOL_HELP[t]).join("; "),
     ACTION_HELP,
+    ctx.robot ? ROBOT_HELP : "",
+    ctx.robot ? `Robot sensors now: ${ctx.robot.distanceCm === null ? "nothing detected ahead" : `obstacle ${ctx.robot.distanceCm} cm ahead`}${ctx.robot.cliff ? ", cliff detected" : ""}${ctx.robot.lifted ? ", being lifted" : ""}.` : "",
     'Examples: "set a timer for 10 minutes" -> {"say":"Ten minute timer started.","actions":[{"type":"timer","seconds":600,"label":"timer"}]}. "what is the weather" -> {"tool":"weather","args":{}}.',
   ].filter(Boolean).join("\n");
 }
@@ -89,7 +101,14 @@ export function sanitizeActions(raw: unknown, kid: boolean): Action[] {
       const seconds = Math.round(n(a.seconds));
       if (seconds >= 1 && seconds <= 24 * 3600) out.push({ type, seconds, label: s(a.label, 40) || "timer" });
     }
-    if (kid) continue; // kids get timers only
+    if (type === "robot") {
+      const cmds = ["forward", "back", "left", "right", "spin", "stop", "dance", "face"] as const;
+      const cmd = cmds.find((c) => c === a.cmd);
+      const mood = MOODS.find((m) => m === a.mood);
+      if (cmd) out.push({ type, cmd, seconds: Math.max(0.3, Math.min(3, n(a.seconds) || 1)), mood });
+      continue;
+    }
+    if (kid) continue; // kids get timers and robot play only
     if (type === "reminder") {
       const text = s(a.text, 140);
       const inSeconds = n(a.inSeconds);
@@ -199,6 +218,7 @@ export async function runAgent(input: AgentInput): Promise<AgentOutcome> {
       say: say || (cards.length ? "Here is what I found." : "I did not catch that. Say it again?"),
       actions: sanitizeActions(parsed?.actions, input.kid),
       cards,
+      mood: MOODS.find((m) => m === parsed?.mood),
     };
     return {
       ok: true,

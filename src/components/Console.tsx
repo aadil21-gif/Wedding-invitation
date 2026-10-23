@@ -2,14 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import type { Card, DeviceContext } from "@/lib/agent/types";
+import type { Card, DeviceContext, Mood } from "@/lib/agent/types";
 import { executeActions, LaunchLink } from "@/lib/actions";
 import { MODES, MODE_LABELS, type Mode } from "@/lib/assistant";
 import { PREF, useBoolPref, usePref, writePref } from "@/lib/prefs";
+import { onRobotEvent, robotConnected, setFace, stopDriving, useRobot, type RobotEvent } from "@/lib/robot";
 import { play } from "@/lib/sfx";
 import {
   Recognizer,
   VoiceLang,
+  VoiceStyle,
   createRecognizer,
   recognitionSupported,
   speak,
@@ -20,6 +22,8 @@ import { dataOps, getData, useData } from "@/lib/store";
 import { CardView, TimerRing } from "./Cards";
 import { HudCore, type OrbState } from "./HudCore";
 import { MemoryManager } from "./MemoryManager";
+import { RoboFace } from "./RoboFace";
+import { RobotPanel } from "./RobotPanel";
 import { SettingsPanel } from "./SettingsPanel";
 import { Typewriter } from "./Typewriter";
 
@@ -58,14 +62,44 @@ const QUICK: { label: string; say: string }[] = [
   { label: "Take a note", say: "Take a note: " },
 ];
 
-const KID_MISSIONS = [
-  "Tell me a funny story about a space cat",
-  "Ask me an animal riddle",
-  "Give me a fun math game",
-  "Tell me an amazing space fact",
-  "Teach me a joke",
-  "What sound does a whale make?",
+const KID_TILES: { icon: string; label: string; say: string; color: string }[] = [
+  { icon: "🚀", label: "Space fact", say: "Tell me an amazing space fact", color: "#7c3aed" },
+  { icon: "🐱", label: "Space cat story", say: "Tell me a funny story about a space cat", color: "#ec4899" },
+  { icon: "🧩", label: "Riddle", say: "Ask me a riddle", color: "#0ea5e9" },
+  { icon: "🔢", label: "Math game", say: "Let's play a fun math game", color: "#22c55e" },
+  { icon: "🦁", label: "Guess the animal", say: "Let's play guess the animal", color: "#f59e0b" },
+  { icon: "😂", label: "Joke", say: "Tell me a joke", color: "#ef4444" },
+  { icon: "🎵", label: "Silly rhyme", say: "Make a silly rhyme", color: "#14b8a6" },
+  { icon: "🎨", label: "Drawing idea", say: "Give me a fun drawing idea", color: "#a855f7" },
 ];
+
+/** Instant, offline reactions to the robot's sensors (no AI call, so they are immediate). */
+const REACTIONS: Record<RobotEvent, { adult: string[]; kid: string[]; mood: Mood; sfx: "ouch" | "whee" | "giggle" }> = {
+  near: {
+    adult: ["Obstacle ahead. Stopping."],
+    kid: ["Oof! Something is in my way! Beep boop!", "Whoa, a wall! Time to turn around!"],
+    mood: "surprised",
+    sfx: "ouch",
+  },
+  cliff: {
+    adult: ["Edge detected. Stopping."],
+    kid: ["Yikes! A big drop! I am not going there!"],
+    mood: "surprised",
+    sfx: "ouch",
+  },
+  lift: {
+    adult: ["I have been lifted. Motors off."],
+    kid: ["Wheee! I am flying! Put me down gently please!"],
+    mood: "excited",
+    sfx: "whee",
+  },
+  touch: {
+    adult: ["Touch detected. Hello."],
+    kid: ["Hee hee! That tickles! Beep boop!", "Hello friend! Boop!"],
+    mood: "love",
+    sfx: "giggle",
+  },
+};
 
 const WAKE =
   /\b(?:hey|hi|ok|okay|hello)?[\s,]*(?:see[\s-]?far|sea[\s-]?far|safar|sefar|seafar|c[\s-]?far)\b|سی\s?فار/i;
@@ -111,14 +145,20 @@ export function Console() {
   const [providerCount, setProviderCount] = useState<number | null>(null);
   const [freshId, setFreshId] = useState(0);
   const [awake, setAwake] = useState(false);
+  const [mood, setMood] = useState<Mood>("neutral");
+  const [showRobot, setShowRobot] = useState(false);
 
   const [motionOn] = useBoolPref(PREF.motion, true);
   const [speakOn] = useBoolPref(PREF.speak, true);
   const [handsfree, setHandsfree] = useBoolPref(PREF.handsfree, false);
   const [shareLoc] = useBoolPref(PREF.loc, true);
   const [lang] = usePref(PREF.lang, "en");
+  const [voicePref] = usePref(PREF.voice, "robot");
+  const [facePref] = useBoolPref(PREF.face, false);
+  const robot = useRobot();
   const [kid, setKid] = useBoolPref(PREF.kid, false);
   const voiceLang: VoiceLang = lang === "ur" ? "ur" : "en";
+  const voiceStyle: VoiceStyle = kid ? "cartoon" : voicePref === "natural" || voicePref === "cartoon" ? voicePref : "robot";
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -138,7 +178,7 @@ export function Console() {
       play("alarm");
       idRef.current += 1;
       setLog((prev) => [...prev, { id: idRef.current, role: "system", text: `${title}: ${body}` }]);
-      if (speakOn) speak(`${title}. ${body}`, voiceLang);
+      if (speakOn) speak(`${title}. ${body}`, voiceLang, undefined, voiceStyle);
       try {
         if (document.hidden && "Notification" in window && Notification.permission === "granted") {
           void navigator.serviceWorker?.ready.then((r) =>
@@ -149,7 +189,7 @@ export function Console() {
         // Notifications are a bonus; the in-app alert already fired.
       }
     },
-    [speakOn, voiceLang]
+    [speakOn, voiceLang, voiceStyle]
   );
 
   useEffect(() => {
@@ -254,6 +294,12 @@ export function Console() {
 
   // ---------- conversation ----------
 
+  /** Speaks with the chosen voice style, preceded by a little robot chatter. */
+  function talk(text: string, onEnd?: () => void) {
+    if (voiceStyle !== "natural") play("chatter");
+    speak(text, voiceLang, onEnd, voiceStyle);
+  }
+
   function addEntry(e: Omit<Entry, "id">): number {
     idRef.current += 1;
     const id = idRef.current;
@@ -272,7 +318,12 @@ export function Console() {
   function buildContext(): DeviceContext & { facts: string[] } {
     const d = getData();
     const t = Date.now();
+    const tel = robot.telemetry;
     return {
+      robot:
+        robot.status === "on"
+          ? { distanceCm: tel?.distanceCm ?? null, cliff: !!tel?.cliff, lifted: !!tel?.lifted }
+          : undefined,
       nowIso: new Date(t).toISOString(),
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Karachi",
       lat: locRef.current?.lat,
@@ -328,6 +379,10 @@ export function Console() {
       }
 
       const outcome = executeActions(res.actions ?? []);
+      if (res.mood) {
+        setMood(res.mood);
+        setFace(res.mood);
+      }
       if (outcome.wantsCamera && !camOn && !kid) void startCamera();
       const fell: string[] = res.fellBackFrom ?? [];
       setFreshId(addEntry({
@@ -343,7 +398,7 @@ export function Console() {
 
       if (speakOn && res.say) {
         setSpeaking(true);
-        speak(res.say, voiceLang, () => {
+        talk(res.say, () => {
           setSpeaking(false);
           openWindow();
         });
@@ -361,6 +416,36 @@ export function Console() {
   useEffect(() => {
     sendRef.current = send;
   });
+
+  // ---------- robot sensor reactions ----------
+
+  const reactRef = useRef<(e: RobotEvent) => void>(() => {});
+  const lastReact = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    reactRef.current = (e: RobotEvent) => {
+      const t = Date.now();
+      if (t - (lastReact.current[e] ?? 0) < 4000) return;
+      lastReact.current[e] = t;
+      const r = REACTIONS[e];
+      const lines = kid ? r.kid : r.adult;
+      const line = lines[Math.floor(Math.random() * lines.length)];
+      play(r.sfx);
+      setMood(r.mood);
+      setFace(r.mood);
+      addEntry({ role: "system", text: line });
+      if (speakOn && !busy) {
+        setSpeaking(true);
+        talk(line, () => setSpeaking(false));
+      }
+      setTimeout(() => {
+        setMood("neutral");
+        if (robotConnected()) setFace("happy");
+      }, 4500);
+    };
+  });
+
+  useEffect(() => onRobotEvent((e) => reactRef.current(e)), []);
 
   // ---------- voice: tap to talk ----------
 
@@ -433,7 +518,7 @@ export function Console() {
             play("wake");
             openWindow();
             setSpeaking(true);
-            speak(voiceLang === "ur" ? "جی؟" : "Yes?", voiceLang, () => {
+            talk(voiceLang === "ur" ? "جی؟" : "Yes?", () => {
               setSpeaking(false);
               openWindow();
             });
@@ -514,7 +599,7 @@ export function Console() {
     setBooted(true);
     setBooting(false);
     play("wake");
-    if (speakOn) speak(kid ? "Mission control online. Pick a mission!" : "SeeFar online. How can I help?", voiceLang);
+    if (speakOn) talk(kid ? "Beep boop! Zippy is online! Pick a game!" : "SeeFar online. How can I help?");
   }
 
   // ---------- kid mode ----------
@@ -592,7 +677,11 @@ export function Console() {
   if (!booted) {
     return (
       <div className={`app-root ${kid ? "kid-skin" : ""} flex-1 flex flex-col items-center justify-center gap-5 p-6 text-center`} data-motion={motionOn ? "on" : "off"}>
-        <HudCore state={booting ? "thinking" : "standby"} motion={motionOn} kid={kid} />
+        {kid || facePref ? (
+          <RoboFace state={booting ? "thinking" : "standby"} mood="happy" motion={motionOn} kid={kid} />
+        ) : (
+          <HudCore state={booting ? "thinking" : "standby"} motion={motionOn} kid={kid} />
+        )}
         <h1 className="hud-title text-4xl font-bold">{kid ? "MISSION CONTROL" : "SEEFAR"}</h1>
         {booting ? (
           <ul className="hud-mono text-left text-sm leading-relaxed" aria-live="polite">
@@ -640,6 +729,13 @@ export function Console() {
             <>
               <button type="button" onClick={enterKidMode} className="touch-target hud-chip rounded px-3 font-bold text-sm">
                 KID
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowRobot(true)}
+                className={`touch-target hud-chip rounded px-3 font-bold text-sm ${robot.status === "on" ? "is-active" : ""}`}
+              >
+                BOT
               </button>
               <button
                 type="button"
@@ -691,7 +787,11 @@ export function Console() {
       )}
 
       <div className="flex flex-col items-center">
-        <HudCore state={orb} motion={motionOn} kid={kid} compact={camOn} />
+        {kid || facePref ? (
+          <RoboFace state={orb} mood={mood} motion={motionOn} kid={kid} compact={camOn} />
+        ) : (
+          <HudCore state={orb} motion={motionOn} kid={kid} compact={camOn} />
+        )}
         <p role="status" aria-live="polite" className="hud-title font-bold tracking-widest text-sm -mt-1">
           {ORB_LABEL[orb]}
           {handsfree && orb === "standby" ? " · SAY “HEY SEEFAR”" : ""}
@@ -750,7 +850,27 @@ export function Console() {
 
       <section aria-label="Conversation" className="w-full max-w-xl flex-1 min-h-[96px] overflow-y-auto flex flex-col gap-2">
         {log.length === 0 && (
-          <p className="opacity-70 text-sm">{kid ? "Pick a mission below, or ask me anything." : MODE_HINT[mode]}</p>
+          kid ? (
+            <div className="grid grid-cols-2 gap-3">
+              {KID_TILES.map((k) => (
+                <button
+                  key={k.label}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void send(k.say)}
+                  className="kid-tile touch-target flex flex-col items-center justify-center gap-1 p-3 font-bold disabled:opacity-60"
+                  style={{ background: k.color }}
+                >
+                  <span className="text-4xl" aria-hidden>
+                    {k.icon}
+                  </span>
+                  <span className="text-lg">{k.label}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="opacity-70 text-sm">{MODE_HINT[mode]}</p>
+          )
         )}
         {log.map((m) => (
           <div key={m.id} className="flex flex-col gap-2">
@@ -800,7 +920,7 @@ export function Console() {
       </section>
 
       <div className="w-full max-w-xl flex gap-2 overflow-x-auto" aria-label="Quick commands">
-        {(kid ? KID_MISSIONS.map((s) => ({ label: s.split(" ").slice(0, 4).join(" ") + "…", say: s })) : QUICK).map((q) => (
+        {(kid ? (log.length ? KID_TILES.map((k) => ({ label: `${k.icon} ${k.label}`, say: k.say })) : []) : QUICK).map((q) => (
           <button
             key={q.label}
             type="button"
@@ -861,6 +981,16 @@ export function Console() {
             HEY
           </button>
         </div>
+        {robot.status === "on" && (
+          <button
+            type="button"
+            onClick={stopDriving}
+            className="touch-target rounded font-bold"
+            style={{ background: "#c1121f", color: "#fff", border: "2px solid #fff" }}
+          >
+            ROBOT STOP
+          </button>
+        )}
         {speaking && (
           <button
             type="button"
@@ -874,6 +1004,27 @@ export function Console() {
           </button>
         )}
       </form>
+
+      {showRobot && (
+        <div role="dialog" aria-modal="true" aria-label="Robot" className="overlay">
+          <div className="panel w-full max-w-xl mx-auto p-4 flex flex-col gap-5 my-4">
+            <div className="flex items-center justify-between">
+              <h2 className="hud-title text-xl font-bold">ROBOT BODY</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  stopDriving();
+                  setShowRobot(false);
+                }}
+                className="touch-target hud-cta px-6 font-bold"
+              >
+                CLOSE
+              </button>
+            </div>
+            <RobotPanel />
+          </div>
+        </div>
+      )}
 
       {showSystems && (
         <div role="dialog" aria-modal="true" aria-label="Systems" className="overlay">
