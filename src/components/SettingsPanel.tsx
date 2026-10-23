@@ -1,5 +1,6 @@
 "use client";
 
+import { ProviderStatus } from "./ProviderStatus";
 import { TextSize, Theme, useSettings } from "./SettingsProvider";
 
 const TEXT_SIZES: { value: TextSize; label: string }[] = [
@@ -55,6 +56,8 @@ export function SettingsPanel() {
           ))}
         </div>
       </fieldset>
+
+      <ProviderStatus />
     </section>
   );
 }

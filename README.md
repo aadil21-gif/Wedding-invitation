@@ -20,8 +20,9 @@ everything else come in later milestones.
 - A passcode screen protecting the whole app, so a stranger who finds the
   URL can't burn through your free AI quota.
 - One AI provider interface (`src/lib/ai/`) with a Gemini adapter plugged
-  in. Groq, OpenRouter and Anthropic adapters are added in later
-  milestones without changing anything that calls them.
+  in, plus a generic OpenAI-compatible adapter for Groq, OpenRouter,
+  Mistral and Cloudflare Workers AI. Any provider with a key set is
+  added to the fallback chain; the rest are skipped.
 - A single "ask a question" box on the home page that proves the whole
   pipeline: your text → the app's server → Gemini → back to your screen.
 
@@ -93,6 +94,17 @@ checked 2026-10-23. Keep this in mind once the health module (Milestone 4)
 exists — it is built to refuse free-provider calls for health data unless
 you explicitly turn that on in Settings.
 
+**Extra free providers** (all optional, set in Vercel, then redeploy):
+`GROQ_API_KEY`, `OPENROUTER_API_KEY`, `MISTRAL_API_KEY`, and
+`CLOUDFLARE_ACCOUNT_ID` + `CLOUDFLARE_API_TOKEN`. Settings -> AI providers
+shows which are set and has a Test button for each. Treat all of them as
+"may train on your prompts" until you have read their terms: Mistral's
+Experiment plan says so explicitly, and OpenRouter free models are
+served by hosts with their own policies. GitHub Models (retired
+2026-07-30) and Cerebras (no standing free tier) are deliberately left out.
+Free limits quoted for Groq and Cloudflare come from third-party
+summaries and are unverified.
+
 Model IDs, and which providers may or may not train on your data, are
 centralized in `src/lib/ai/config.ts`, with the source and the date each
 entry was checked written next to it. Re-verify before trusting an old
@@ -129,6 +141,7 @@ src/
       config.ts            Model IDs, data policy, capabilities — one file
       registry.ts           Picks a provider per feature, falls back on 429
       providers/gemini.ts    The Gemini adapter
+      providers/openaiCompat.ts  Groq/OpenRouter/Mistral/Cloudflare adapter
   middleware.ts            Passcode gate + rate limiting, runs before every route
 public/
   icons/                   App icons (regular + maskable, 192/512px)

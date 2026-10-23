@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { routeChat } from "@/lib/ai/registry";
 
+// Fallback across several providers can take a while; Vercel's default is shorter.
+export const maxDuration = 60;
+
 /**
  * M0's "hello" call: plain text in, plain text out. Vision input, memory
  * context and tool calls are added in M1-M3; the shape of this route
@@ -29,13 +32,16 @@ export async function POST(request: NextRequest) {
   if (result.unavailable) {
     const messages: Record<string, string> = {
       no_key: "No AI key is set on this deployment. Add GEMINI_API_KEY in Vercel and redeploy.",
-      busy: "Google's AI is overloaded right now. Wait a few seconds and ask again.",
-      rate_limited: "The free AI limit was reached for now. Wait a minute and ask again.",
-      key_rejected: "Google rejected the API key. Check GEMINI_API_KEY in Vercel, then redeploy.",
-      error: "The AI request failed. Try again, and check the server logs if it keeps happening.",
+      busy: "Every AI provider that has a key is overloaded right now. Wait a few seconds and ask again.",
+      rate_limited: "The free limits of every configured provider are used up for now. Wait a minute and ask again, or add another provider key.",
+      key_rejected: "A provider rejected its API key. Open Settings, run the provider check, and fix the one marked rejected.",
+      error: "The AI request failed on every provider. Try again, and check the server logs if it keeps happening.",
     };
     return NextResponse.json(
-      { error: messages[result.reason ?? "error"] ?? messages.error },
+      {
+        error: messages[result.reason ?? "error"] ?? messages.error,
+        tried: result.skipped?.map((s) => `${s.providerId}: ${s.reason}`) ?? [],
+      },
       { status: 503 }
     );
   }
@@ -44,5 +50,6 @@ export async function POST(request: NextRequest) {
     text: result.text,
     providerId: result.providerId,
     modelId: result.modelId,
+    fellBackFrom: result.skipped?.map((s) => s.providerId) ?? [],
   });
 }

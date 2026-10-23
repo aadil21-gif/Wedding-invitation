@@ -16,6 +16,14 @@ export interface ChatRequest {
   stream?: boolean;
 }
 
+export interface ChatOptions {
+  /**
+   * Epoch milliseconds after which the provider must stop trying. The route
+   * has a hard time limit, so every adapter checks this between attempts.
+   */
+  deadline?: number;
+}
+
 export interface ChatResponse {
   text: string;
   /** Which provider actually answered, e.g. "gemini". Shown to the user on fallback. */
@@ -32,16 +40,17 @@ export interface ProviderCapabilities {
 }
 
 /**
- * One adapter per AI provider (Gemini, Groq, OpenRouter, Anthropic).
- * Implementations must throw RateLimitError on HTTP 429 so the registry
- * can fall back to the next provider in the chain.
+ * One adapter per AI provider. Implementations throw RateLimitError when the
+ * provider says 429, and ProviderUnavailableError for everything else, so the
+ * registry can fall back to the next provider in the chain.
  */
 export interface AIProvider {
   id: string;
+  label: string;
   dataPolicy: DataPolicy;
   capabilities: ProviderCapabilities;
   modelId: string;
-  chat(request: ChatRequest): Promise<ChatResponse>;
+  chat(request: ChatRequest, options?: ChatOptions): Promise<ChatResponse>;
 }
 
 export class RateLimitError extends Error {
