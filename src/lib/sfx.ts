@@ -7,7 +7,7 @@ import { PREF, readPref } from "./prefs";
  * Browsers only allow audio after a tap, so the app unlocks it from the
  * "power up" button before anything else plays.
  */
-export type Sfx = "boot" | "listen" | "send" | "reply" | "error" | "snap" | "kid";
+export type Sfx = "boot" | "listen" | "send" | "reply" | "error" | "snap" | "kid" | "tick" | "alarm" | "wake";
 
 let ctx: AudioContext | null = null;
 
@@ -75,6 +75,19 @@ export function play(name: Sfx) {
       break;
     case "error":
       tone(c, t, 220, 0.25, "sawtooth", 0.07, 110);
+      break;
+    case "tick":
+      tone(c, t, 2400, 0.02, "square", 0.02);
+      break;
+    case "wake":
+      tone(c, t, 520, 0.09, "sine", 0.1, 780);
+      tone(c, t + 0.09, 780, 0.12, "sine", 0.1, 1170);
+      break;
+    case "alarm":
+      for (let i = 0; i < 6; i++) {
+        tone(c, t + i * 0.45, 1400, 0.16, "square", 0.08);
+        tone(c, t + i * 0.45 + 0.2, 1000, 0.16, "square", 0.08);
+      }
       break;
     case "kid":
       [523, 659, 784, 1046].forEach((f, i) => tone(c, t + i * 0.09, f, 0.14, "triangle", 0.08));

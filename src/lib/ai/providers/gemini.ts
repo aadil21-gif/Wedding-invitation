@@ -13,7 +13,7 @@ const config = PROVIDER_CONFIG.gemini;
 
 /** Statuses where trying a different model on the same key can still work. */
 const TRY_NEXT_MODEL = new Set([429, 500, 503]);
-const PER_ATTEMPT_MS = 12_000;
+const PER_ATTEMPT_MS = 9_000;
 
 function statusOf(err: unknown): number | undefined {
   const e = err as { status?: unknown; code?: unknown } | null;
@@ -60,6 +60,7 @@ export function createGeminiProvider(apiKey: string): AIProvider {
             contents,
             config: {
               ...(systemInstruction ? { systemInstruction } : {}),
+              ...(request.json ? { responseMimeType: "application/json" } : {}),
               abortSignal: AbortSignal.timeout(Math.min(PER_ATTEMPT_MS, remaining - 500)),
             },
           });

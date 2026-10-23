@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { LIMITS, MODES, Mode, systemPrompt } from "@/lib/assistant";
-import { routeChat } from "@/lib/ai/registry";
+import { LIMITS, MODES, Mode } from "@/lib/assistant";
+import { runAgent } from "@/lib/agent/run";
+import type { DeviceContext } from "@/lib/agent/types";
 import type { ChatMessage } from "@/lib/ai/types";
 
-// Fallback across several providers can take a while; Vercel's default is shorter.
+// Provider fallback plus tool calls can take a while; Vercel's default is shorter.
 export const maxDuration = 60;
 
 const UNAVAILABLE: Record<string, string> = {
@@ -39,9 +40,54 @@ function cleanImage(raw: unknown): string | null | "invalid" {
   return b64;
 }
 
+const strList = (v: unknown, count: number, len: number): string[] =>
+  Array.isArray(v)
+    ? v.filter((x): x is string => typeof x === "string").slice(0, count).map((x) => x.slice(0, len))
+    : [];
+
+function cleanContext(raw: unknown): DeviceContext {
+  const c = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const now = typeof c.nowIso === "string" && !Number.isNaN(Date.parse(c.nowIso)) ? c.nowIso : new Date().toISOString();
+  const tz = typeof c.timeZone === "string" && /^[A-Za-z_\/+-]{1,40}$/.test(c.timeZone) ? c.timeZone : "Asia/Karachi";
+  const num = (v: unknown, lo: number, hi: number) =>
+    typeof v === "number" && v >= lo && v <= hi ? v : undefined;
+
+  const lists: Record<string, string[]> = {};
+  if (c.lists && typeof c.lists === "object") {
+    for (const [k, v] of Object.entries(c.lists as Record<string, unknown>).slice(0, 8)) {
+      lists[k.slice(0, 40)] = strList(v, 20, 80);
+    }
+  }
+  const timers = Array.isArray(c.timers)
+    ? c.timers.slice(0, 5).map((t: { label?: unknown; secondsLeft?: unknown }) => ({
+        label: String(t?.label ?? "timer").slice(0, 40),
+        secondsLeft: Math.max(0, Math.round(Number(t?.secondsLeft) || 0)),
+      }))
+    : [];
+  const reminders = Array.isArray(c.reminders)
+    ? c.reminders.slice(0, 5).map((r: { text?: unknown; at?: unknown }) => ({
+        text: String(r?.text ?? "").slice(0, 100),
+        at: String(r?.at ?? "").slice(0, 40),
+      }))
+    : [];
+
+  return {
+    nowIso: now,
+    timeZone: tz,
+    lat: num(c.lat, -90, 90),
+    lon: num(c.lon, -180, 180),
+    facts: strList(c.facts, 20, 160),
+    lists,
+    notes: strList(c.notes, 8, 160),
+    timers,
+    reminders,
+  };
+}
+
 /**
  * One endpoint for every spoken or typed turn: text, optional camera frame,
- * a mode, and kid mode. Routing and provider fallback live in routeChat.
+ * a mode, kid mode and device context. The agent loop (tools, actions, cards)
+ * lives in lib/agent/run.ts; provider routing in lib/ai/registry.ts.
  */
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
@@ -65,34 +111,35 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "The camera is off in kid mode." }, { status: 400 });
   }
 
-  const messages: ChatMessage[] = [
-    { role: "system", content: systemPrompt({ mode, kid, lang }) },
-    ...cleanHistory(body?.history),
-    { role: "user", content: message },
-  ];
-
-  const result = await routeChat(image ? "vision" : "chat", {
-    messages,
-    ...(image ? { images: [image] } : {}),
+  const outcome = await runAgent({
+    message,
+    history: cleanHistory(body?.history),
+    mode,
+    kid,
+    lang,
+    image,
+    // Kid mode never receives personal memory, notes or location.
+    ctx: kid ? cleanContext({ nowIso: body?.context?.nowIso, timeZone: body?.context?.timeZone }) : cleanContext(body?.context),
   });
 
-  if (result.unavailable) {
-    const base = UNAVAILABLE[result.reason ?? "error"] ?? UNAVAILABLE.error;
+  if (!outcome.ok) {
+    const reason = outcome.result.reason ?? "error";
     return NextResponse.json(
       {
-        error: image && result.reason === "no_key"
-          ? "No provider that can see images is set up. Gemini or OpenRouter needs a key."
-          : base,
-        tried: result.skipped?.map((s) => `${s.providerId}: ${s.reason}`) ?? [],
+        error:
+          image && reason === "no_key"
+            ? "No provider that can see images is set up. Gemini, Groq or Mistral needs a key."
+            : (UNAVAILABLE[reason] ?? UNAVAILABLE.error),
+        tried: outcome.result.skipped?.map((s) => `${s.providerId}: ${s.reason}`) ?? [],
       },
       { status: 503 }
     );
   }
 
   return NextResponse.json({
-    text: result.text,
-    providerId: result.providerId,
-    modelId: result.modelId,
-    fellBackFrom: result.skipped?.map((s) => s.providerId) ?? [],
+    ...outcome.reply,
+    providerId: outcome.providerId,
+    modelId: outcome.modelId,
+    fellBackFrom: outcome.fellBackFrom,
   });
 }

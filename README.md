@@ -26,20 +26,34 @@ everything else come in later milestones.
 - A single "ask a question" box on the home page that proves the whole
   pipeline: your text → the app's server → Gemini → back to your screen.
 
-## What's in Milestone 1
+## What it does now
 
-- Voice: tap the mic, speak, and the answer is read aloud (Chrome's speech
-  recognition and speech synthesis; English or Urdu, set in Settings).
-- Camera: turn it on and every question includes the current view. Modes:
-  Read, Medicine, Ad decoder, Math. Frames are resized on the phone and sent
-  only to providers that can see images (Gemini, OpenRouter).
-- Sci-fi cockpit theme with synthesized sounds (no audio files), plus
-  switches for sound, animations and spoken answers. Animations also stop
-  when the phone's reduced-motion setting is on.
-- Kid mode: simple friendly prompts, no camera, nothing saved, and a
-  4-digit parent PIN to leave it. The PIN only stops children tapping out;
-  it is stored on the phone and is not strong security. Kid text still goes
-  to free providers that may train on it, so keep real names and photos out.
+SeeFar is a voice-first assistant with a sci-fi cockpit screen.
+
+- **Talk to it:** tap and speak, or turn on "HEY" and say "Hey SeeFar, ..."
+  (works only while the app is open with the screen on). English or Urdu.
+- **It does things:** timers with a live countdown ring, reminders (ring
+  inside the app), notes, shopping and other lists, "remember that...",
+  directions in Google Maps, calls and WhatsApp (you tap to confirm, so a
+  misheard number never dials), music search.
+- **It looks things up (free, no key):** weather (Open-Meteo), prayer times
+  (Aladhan, Karachi method), currency (open.er-api.com), Wikipedia, a safe
+  calculator. Optional live web search with `TAVILY_API_KEY` (not yet tested
+  against the live API).
+- **It sees:** camera modes Read, Medicine, Ad decoder, Math. Frames are resized
+  on the phone and sent only to image-capable providers (Gemini, Groq's
+  qwen model, Mistral small, OpenRouter vision models).
+- **Never stops answering:** providers are raced automatically. If the first is
+  slow for 4.5 s the next starts in parallel, recently failed providers go to
+  the back, and models that refuse are skipped for 30 minutes.
+- **Kid mode:** simple safe answers, timers only, no camera, no memory or
+  location sent, 4-digit parent PIN (convenience lock, not strong security).
+
+Limits you should know about: the web app cannot listen in the background,
+cannot ring a reminder with the phone locked or the app closed, and cannot
+read your contacts. Those need a native Android app (a later milestone).
+Memory, notes and lists are stored only on the phone but are sent to the AI
+provider each question; free providers may keep what they receive.
 
 ## Running it on your own computer
 

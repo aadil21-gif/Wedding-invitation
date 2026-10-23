@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Atkinson_Hyperlegible } from "next/font/google";
+import { Atkinson_Hyperlegible, Orbitron } from "next/font/google";
 import "./globals.css";
 import { SettingsProvider, NO_FLASH_SCRIPT } from "@/components/SettingsProvider";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
@@ -10,6 +10,14 @@ const bodyFont = Atkinson_Hyperlegible({
   variable: "--font-body",
   subsets: ["latin"],
   weight: ["400", "700"],
+});
+
+// Orbitron is used only for short labels, the clock and headings: body text
+// stays in Atkinson Hyperlegible so long answers remain easy to read.
+const displayFont = Orbitron({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["500", "700"],
 });
 
 export const metadata: Metadata = {
@@ -28,14 +36,14 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+    { media: "(prefers-color-scheme: light)", color: "#02060f" },
+    { media: "(prefers-color-scheme: dark)", color: "#02060f" },
   ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${bodyFont.variable} h-full`} suppressHydrationWarning>
+    <html lang="en" className={`${bodyFont.variable} ${displayFont.variable} h-full`} suppressHydrationWarning>
       <head>
         {/* Runs before paint so the stored theme/text-size apply with no flash. */}
         <script dangerouslySetInnerHTML={{ __html: NO_FLASH_SCRIPT }} />

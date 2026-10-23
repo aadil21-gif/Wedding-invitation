@@ -71,8 +71,12 @@ export interface CompatProviderConfig {
   /**
    * "never": image requests are never sent here (support not verified).
    * "discovered": only models the provider says accept images are used.
+   * "listed": image requests use visionModels, taken from the provider's docs.
    */
-  vision: "never" | "discovered";
+  vision: "never" | "discovered" | "listed";
+  visionModels?: string[];
+  /** Mistral wants image_url as a plain string; OpenAI-style wants {url}. */
+  imageUrlAsString?: boolean;
   extraHeaders?: Record<string, string>;
   dataPolicy: DataPolicy;
   /** What to know before relying on this one, shown in Settings. */
@@ -92,7 +96,10 @@ export const COMPAT_PROVIDERS: Record<string, CompatProviderConfig> = {
     preferredModels: ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "openai/gpt-oss-20b"],
     modelOverrideEnv: "GROQ_MODEL",
     discovery: "openai-list",
-    vision: "never",
+    // console.groq.com/docs/vision (checked 2026-10-23) lists this model as
+    // generally available with image input, 3 images per request.
+    vision: "listed",
+    visionModels: ["qwen/qwen3.8-27b"],
     // Data policy not verified: treated as may_train until it is.
     dataPolicy: "may_train",
     notes: "Fast. About 30 requests a minute and 1,000 a day on the free plan (third-party summary; Groq's own page is the authority).",
@@ -124,7 +131,12 @@ export const COMPAT_PROVIDERS: Record<string, CompatProviderConfig> = {
     preferredModels: ["mistral-small-latest"],
     modelOverrideEnv: "MISTRAL_MODEL",
     discovery: "openai-list",
-    vision: "never",
+    // docs.mistral.ai/capabilities/vision (checked 2026-10-23) names Mistral
+    // Small 3.2 as image-capable and uses the mistral-small-latest alias.
+    // The base64 form is documented as supported but not shown; unverified.
+    vision: "listed",
+    visionModels: ["mistral-small-latest"],
+    imageUrlAsString: true,
     // Mistral says Experiment-plan requests may be used to train its models.
     dataPolicy: "may_train",
     notes: "Free Experiment plan needs a verified phone number, no card. Requests may be used to train Mistral's models.",
@@ -161,8 +173,8 @@ export const COMPAT_PROVIDERS: Record<string, CompatProviderConfig> = {
  */
 export const FEATURE_PROVIDER_ORDER: Record<string, string[]> = {
   // Only providers whose image support is confirmed at runtime appear here.
-  vision: ["gemini", "openrouter"],
-  chat: ["gemini", "groq", "openrouter", "mistral", "cloudflare"],
+  vision: ["gemini", "groq", "mistral", "openrouter"],
+  chat: ["gemini", "groq", "mistral", "openrouter", "cloudflare"],
   // Health features must only use no_train providers unless the user opts
   // in via Settings, enforced in src/lib/ai/registry.ts, not here.
   health: [],

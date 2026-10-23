@@ -42,6 +42,13 @@ export function SettingsPanel() {
         <Toggle label="Sounds" prefKey={PREF.sound} />
         <Toggle label="Animations" prefKey={PREF.motion} />
         <Toggle label="Speak answers aloud" prefKey={PREF.speak} />
+        <Toggle label="Always listen for “Hey SeeFar”" prefKey={PREF.handsfree} def={false} />
+        <p className="text-sm opacity-70">
+          Only works while SeeFar is open with the screen on. It uses the mic continuously, drains
+          battery, and Chrome on some phones beeps each time listening restarts.
+        </p>
+        <Toggle label="Share rough location (weather, nearby)" prefKey={PREF.loc} />
+        <AlertsButton />
         <LanguagePick />
       </fieldset>
 
@@ -71,8 +78,8 @@ export function SettingsPanel() {
   );
 }
 
-function Toggle({ label, prefKey }: { label: string; prefKey: string }) {
-  const [on, setOn] = useBoolPref(prefKey, true);
+function Toggle({ label, prefKey, def = true }: { label: string; prefKey: string; def?: boolean }) {
+  const [on, setOn] = useBoolPref(prefKey, def);
   return (
     <button
       type="button"
@@ -108,6 +115,26 @@ function LanguagePick() {
           {label}
         </button>
       ))}
+    </div>
+  );
+}
+
+function AlertsButton() {
+  const supported = typeof window !== "undefined" && "Notification" in window;
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        disabled={!supported}
+        onClick={() => void Notification.requestPermission()}
+        className="touch-target rounded-lg border-2 border-[var(--border)] px-4 font-bold"
+      >
+        Allow alert notifications
+      </button>
+      <p className="text-sm opacity-70">
+        Timers and reminders always ring inside the app. Notifications help only while SeeFar is open
+        in the background. For an alarm that must wake you, use the phone&apos;s Clock app.
+      </p>
     </div>
   );
 }

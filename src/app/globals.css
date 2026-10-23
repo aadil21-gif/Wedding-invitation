@@ -8,6 +8,7 @@
   --accent-foreground: #ffffff;
   --border: #4d4d4d;
   --font-scale: 1;
+  --accent-2: #b45309;
 }
 
 :root[data-theme="dark"] {
@@ -28,6 +29,7 @@
   --accent: #00e5ff;
   --accent-foreground: #00141a;
   --border: #00b8d4;
+  --accent-2: #ff9f1c;
 }
 
 :root[data-text-size="large"] {
@@ -74,142 +76,223 @@ body {
 }
 
 
-/* ---------- Sci-fi HUD ---------- */
-.hud-root,
-.kid-skin {
-  background: var(--background);
+/* ---------- Sci-fi cockpit ---------- */
+.app-root {
   position: relative;
+  min-height: 100dvh;
+  background:
+    radial-gradient(ellipse 80% 45% at 50% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, color-mix(in srgb, var(--accent-2) 10%, transparent), transparent 70%),
+    var(--background);
+  overflow-x: hidden;
 }
-.hud-root::before {
+/* grid + scanlines */
+.app-root::before {
   content: "";
-  position: absolute;
+  position: fixed;
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(0, 229, 255, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 229, 255, 0.06) 1px, transparent 1px);
-  background-size: 32px 32px;
+    linear-gradient(color-mix(in srgb, var(--accent) 7%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 7%, transparent) 1px, transparent 1px),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 1px, transparent 1px 3px);
+  background-size: 36px 36px, 36px 36px, auto;
+  z-index: 0;
 }
-.hud-root > *,
-.kid-skin > * {
+/* a slow scan beam */
+.app-root[data-motion="on"]::after {
+  content: "";
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 22vh;
+  top: -22vh;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--accent) 10%, transparent), transparent);
+  animation: beam 7s linear infinite;
+  z-index: 0;
+}
+@keyframes beam {
+  to { transform: translateY(125vh); }
+}
+.app-root > * {
   position: relative;
+  z-index: 1;
+}
+
+.hud-core {
+  display: block;
+  filter: drop-shadow(0 0 18px color-mix(in srgb, var(--accent) 55%, transparent));
 }
 .hud-title {
+  font-family: var(--font-display), var(--font-body), sans-serif;
   color: var(--accent);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.16em;
+  text-shadow: 0 0 14px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.hud-mono {
+  font-family: var(--font-display), ui-monospace, monospace;
+  letter-spacing: 0.05em;
+}
+.hud-label {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+  opacity: 0.9;
+}
+.hud-big {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-size: 2.2rem;
+  line-height: 1.1;
+  color: var(--accent);
   text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);
 }
-.hud-panel,
-.hud-user,
-.hud-input {
-  border: 2px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 85%, transparent);
-  color: var(--foreground);
+.hud-link {
+  color: var(--accent-2);
+  text-decoration: underline;
 }
-.hud-panel {
-  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 25%, transparent);
+
+/* panels with corner brackets */
+.panel {
+  position: relative;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface) 82%, transparent),
+    color-mix(in srgb, var(--background) 88%, transparent)
+  );
+  box-shadow: inset 0 0 24px color-mix(in srgb, var(--accent) 7%, transparent);
 }
-.hud-user {
-  border-style: dashed;
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--accent), var(--accent)) top left / 14px 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) top left / 2px 14px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) top right / 14px 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) top right / 2px 14px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) bottom left / 14px 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) bottom left / 2px 14px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) bottom right / 14px 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) bottom right / 2px 14px no-repeat;
+}
+.hud-cell {
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  padding: 0.4rem 0.25rem;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.hud-tag {
+  font-family: var(--font-display), sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  border: 1px solid var(--accent-2);
+  color: var(--accent-2);
+  padding: 0.2rem 0.5rem;
+}
+.hud-alert {
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+  animation: alert-pulse 1s ease-in-out 3;
+}
+@keyframes alert-pulse {
+  50% { box-shadow: 0 0 22px var(--accent-2); }
 }
 .hud-error {
   border-color: #ff5c5c;
 }
-.hud-button,
-.hud-chip,
-.hud-mic {
-  border: 2px solid var(--accent);
-  background: transparent;
-  color: var(--accent);
+
+.hud-input {
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--background) 80%, transparent);
+  color: var(--foreground);
+  border-radius: 2px;
 }
-.hud-button:hover,
-.hud-chip.is-active,
+.hud-chip {
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--accent);
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  letter-spacing: 0.08em;
+}
+.hud-chip:hover,
+.hud-chip.is-active {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.hud-cta {
+  border: 1px solid var(--accent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 35%, transparent), color-mix(in srgb, var(--accent) 12%, transparent));
+  color: var(--foreground);
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  letter-spacing: 0.1em;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  text-align: center;
+}
+.hud-cta:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.hud-mic {
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  letter-spacing: 0.12em;
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+  box-shadow: inset 0 0 18px color-mix(in srgb, var(--accent) 25%, transparent);
+}
 .hud-mic.is-live {
   background: var(--accent);
   color: var(--accent-foreground);
 }
-.hud-mic {
-  box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 35%, transparent);
+[data-motion="on"] .hud-mic.is-live {
+  animation: mic-live 0.9s ease-in-out infinite;
+}
+@keyframes mic-live {
+  50% { filter: brightness(1.25); }
 }
 
-/* The orb: state is shown by colour AND label, never colour alone. */
-.orb {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #ffffff 0%, var(--accent) 35%, #003b4a 100%);
-  box-shadow: 0 0 30px var(--accent), 0 0 70px color-mix(in srgb, var(--accent) 50%, transparent);
-  animation: orb-idle 3s ease-in-out infinite;
+/* camera reticle */
+.reticle {
+  position: absolute;
+  inset: 12%;
+  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  background:
+    linear-gradient(var(--accent), var(--accent)) center / 1px 22px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) center / 22px 1px no-repeat;
 }
-.orb[data-state="listening"] {
-  animation: orb-listen 0.9s ease-in-out infinite;
-  filter: hue-rotate(80deg);
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow-y: auto;
+  padding: 0 12px;
+  background: color-mix(in srgb, var(--background) 94%, transparent);
+  backdrop-filter: blur(6px);
 }
-.orb[data-state="thinking"] {
-  animation: orb-think 1.2s linear infinite;
-  filter: hue-rotate(-60deg);
-}
-.orb[data-state="speaking"] {
-  animation: orb-speak 0.5s ease-in-out infinite;
-  filter: hue-rotate(35deg);
-}
-@keyframes orb-idle {
-  50% { transform: scale(1.05); }
-}
-@keyframes orb-listen {
-  50% { transform: scale(1.18); }
-}
-@keyframes orb-think {
-  from { transform: rotate(0deg) scale(1); }
-  50% { transform: rotate(180deg) scale(0.92); }
-  to { transform: rotate(360deg) scale(1); }
-}
-@keyframes orb-speak {
-  50% { transform: scale(1.1); }
-}
-[data-motion="off"] .orb,
-[data-motion="off"].orb {
-  animation: none;
-}
+
 @media (prefers-reduced-motion: reduce) {
-  .orb { animation: none !important; }
+  .app-root::after,
+  .hud-alert,
+  .hud-mic.is-live {
+    animation: none !important;
+  }
 }
 
-/* ---------- Kid mode: bright, big, friendly ---------- */
+/* ---------- Kid mode: same cockpit, warm "junior astronaut" palette ---------- */
 .kid-skin {
-  --background: #fff7d6;
-  --foreground: #2b1b5a;
-  --surface: #ffffff;
-  --accent: #7c3aed;
-  --accent-foreground: #ffffff;
-  --border: #7c3aed;
+  --background: #12002e;
+  --foreground: #fff4d6;
+  --surface: #2a0a5e;
+  --accent: #ffc233;
+  --accent-foreground: #1a0a00;
+  --accent-2: #ff4dc4;
+  --border: #ffc233;
   color: var(--foreground);
-}
-.kid-skin .hud-title {
-  color: #d9480f;
-  text-shadow: none;
-}
-.kid-skin .hud-panel,
-.kid-skin .hud-user,
-.kid-skin .hud-input {
-  background: #ffffff;
-  box-shadow: none;
-}
-.kid-skin .hud-button,
-.kid-skin .hud-mic {
-  background: var(--accent);
-  color: var(--accent-foreground);
-  box-shadow: none;
-}
-.kid-skin .orb {
-  background: radial-gradient(circle at 35% 30%, #fff 0%, #ff8fab 35%, #7c3aed 100%);
-  box-shadow: 0 0 24px #ff8fab;
-}
-.kid-card {
-  border: 3px solid #ff8fab;
-  background: #ffffff;
-  color: #2b1b5a;
-}
-.kid-card:hover {
-  background: #ffe3ec;
 }

@@ -3,7 +3,7 @@ export const MODES = ["general", "read", "medicine", "ad", "math"] as const;
 export type Mode = (typeof MODES)[number];
 
 export const MODE_LABELS: Record<Mode, string> = {
-  general: "Ask",
+  general: "Assist",
   read: "Read",
   medicine: "Medicine",
   ad: "Ad decoder",
@@ -17,7 +17,7 @@ const BASE =
   "If an image is attached, it is what the user is looking at right now. " +
   "If text in the image is blurry, cut off or unreadable, say exactly that and say how to retake the photo; never invent text.";
 
-const MODE_PROMPTS: Record<Mode, string> = {
+export const MODE_PROMPTS_PUBLIC: Record<Mode, string> = {
   general: "",
   read:
     "Mode: read. Read out all text visible in the image in a natural order (headings first), then add one sentence on what it is. " +
@@ -45,7 +45,7 @@ const KID_PROMPT =
   "Never pretend to be a person. Make learning feel like a game.";
 
 export function systemPrompt(opts: { mode: Mode; kid: boolean; lang: "en" | "ur" }): string {
-  const parts = opts.kid ? [KID_PROMPT] : [BASE, MODE_PROMPTS[opts.mode]];
+  const parts = opts.kid ? [KID_PROMPT] : [BASE, MODE_PROMPTS_PUBLIC[opts.mode]];
   if (opts.lang === "ur") {
     parts.push("Reply in Urdu using Urdu script, in simple spoken Urdu.");
   }

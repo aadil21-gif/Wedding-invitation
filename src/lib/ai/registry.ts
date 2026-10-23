@@ -39,18 +39,34 @@ export function reasonFor(err: unknown): UnavailableReason {
     // Google reports a rejected key as 400 API_KEY_INVALID.
     if (err.status === 400 && /API key/i.test(err.message)) return "key_rejected";
     if (err.status === 500 || err.status === 502 || err.status === 503 || err.status === 504) return "busy";
+    // Aborted/timeout has no status: the provider was too slow.
+    if (err.status === undefined && /abort|timed? ?out/i.test(err.message)) return "busy";
   }
   return "error";
 }
 
-/** Budget for one routed request: the route's maxDuration minus headroom. */
+/** Total time one routed request may take; the route's maxDuration is 60s. */
 const REQUEST_BUDGET_MS = 50_000;
+/** If the first provider has not answered in this long, start the next one too. */
+const HEDGE_MS = 4_500;
+/** Providers that just failed go to the back of the line for a while. */
+const cooldownUntil = new Map<string, number>();
+const COOLDOWN_MS: Record<UnavailableReason, number> = {
+  no_key: 0,
+  busy: 45_000,
+  rate_limited: 90_000,
+  key_rejected: 10 * 60_000,
+  error: 30_000,
+};
 
 /**
- * Routes a chat request to the first available, allowed provider for the
- * given feature, falling back on failures. Enforces the health-data privacy
- * rule: health features may only use no_train providers unless the caller
- * explicitly allows free providers.
+ * Routes a chat request across the feature's providers automatically.
+ *
+ * - Providers without a key are skipped.
+ * - Providers that failed in the last minute or so go to the back of the line.
+ * - If the front provider is slow (4.5 s) the next one starts in parallel
+ *   and the first answer wins, so one overloaded provider does not stall you.
+ * - Health features may only use no_train providers unless the caller allows it.
  */
 export async function routeChat(
   feature: AIFeature,
@@ -63,36 +79,72 @@ export async function routeChat(
     chain = chain.filter((id) => dataPolicyOf(id) === "no_train");
   }
 
-  const deadline = Date.now() + REQUEST_BUDGET_MS;
-  const skipped: { providerId: string; reason: UnavailableReason }[] = [];
+  const now = Date.now();
+  const providers = chain
+    .map((id) => ({ id, provider: buildProvider(id) }))
+    .filter((p): p is { id: string; provider: AIProvider } => !!p.provider)
+    .sort(
+      (a, b) =>
+        Number((cooldownUntil.get(a.id) ?? 0) > now) - Number((cooldownUntil.get(b.id) ?? 0) > now)
+    );
 
-  for (const id of chain) {
-    if (deadline - Date.now() < 2_500) break;
-    const provider = buildProvider(id);
-    if (!provider) continue;
-    try {
-      const result = await provider.chat(request, { deadline });
-      return { ...result, skipped };
-    } catch (err) {
-      // Any provider failure: fall through to the next provider in the chain
-      // rather than failing the whole feature, but remember why.
-      console.error(`[ai] ${id} failed`, err instanceof RateLimitError ? "rate-limited" : err);
-      skipped.push({ providerId: id, reason: reasonFor(err) });
-    }
+  const skipped: { providerId: string; reason: UnavailableReason }[] = [];
+  if (providers.length === 0) {
+    return { text: "", providerId: "none", modelId: "none", unavailable: true, reason: "no_key", skipped };
   }
 
-  // Report the most useful reason: a rejected key outranks busy, which outranks
-  // rate-limited, which outranks a generic error. No attempts means no key.
-  const rank: UnavailableReason[] = ["key_rejected", "busy", "rate_limited", "error"];
-  const reason: UnavailableReason =
-    skipped.length === 0 ? "no_key" : rank.find((r) => skipped.some((s) => s.reason === r)) ?? "error";
+  const deadline = now + REQUEST_BUDGET_MS;
 
-  return {
-    text: "",
-    providerId: "none",
-    modelId: "none",
-    unavailable: true,
-    reason,
-    skipped,
-  };
+  return new Promise<ChatResult>((resolve) => {
+    let next = 0;
+    let active = 0;
+    let finished = false;
+    let hedge: ReturnType<typeof setTimeout> | undefined;
+
+    const finish = (result: ChatResult) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(hedge);
+      clearTimeout(overall);
+      resolve(result);
+    };
+
+    const giveUp = () => {
+      // The most useful reason: a rejected key outranks busy, then rate limit.
+      const rank: UnavailableReason[] = ["key_rejected", "busy", "rate_limited", "error"];
+      const reason: UnavailableReason =
+        rank.find((r) => skipped.some((s) => s.reason === r)) ?? "busy";
+      finish({ text: "", providerId: "none", modelId: "none", unavailable: true, reason, skipped });
+    };
+
+    const overall = setTimeout(giveUp, REQUEST_BUDGET_MS);
+
+    const launch = (): boolean => {
+      if (finished || next >= providers.length) return false;
+      const { id, provider } = providers[next++];
+      active++;
+      provider
+        .chat(request, { deadline })
+        .then((result) => {
+          cooldownUntil.delete(id);
+          finish({ ...result, skipped });
+        })
+        .catch((err) => {
+          const reason = reasonFor(err);
+          console.error(`[ai] ${id} failed (${reason})`, err instanceof RateLimitError ? "" : err);
+          cooldownUntil.set(id, Date.now() + COOLDOWN_MS[reason]);
+          skipped.push({ providerId: id, reason });
+          active--;
+          if (finished) return;
+          if (!launch() && active === 0) giveUp();
+        });
+      clearTimeout(hedge);
+      hedge = setTimeout(() => {
+        launch();
+      }, HEDGE_MS);
+      return true;
+    };
+
+    launch();
+  });
 }
