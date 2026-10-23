@@ -1,6 +1,7 @@
 import { routeChat, type ChatResult } from "../ai/registry";
 import type { ChatMessage } from "../ai/types";
 import { MODE_PROMPTS_PUBLIC, type Mode } from "../assistant";
+import { characterOf } from "../characters";
 import { TOOL_HELP, availableTools, runTool } from "./tools";
 import type { Action, AgentReply, Card, DeviceContext, Mood } from "./types";
 
@@ -24,11 +25,13 @@ const ROBOT_HELP = `The user's robot body is connected. Robot actions (the robot
  {"type":"robot","cmd":"stop"}   {"type":"robot","cmd":"dance"}   {"type":"robot","cmd":"face","mood":"happy"}
 Obey "stop" instantly. Never drive for more than 3 seconds per command. Distance ahead is in context.`;
 
-function persona(kid: boolean, mode: Mode, lang: "en" | "ur", ctx: DeviceContext, tools: string[]) {
+function persona(kid: boolean, mode: Mode, lang: "en" | "ur", ctx: DeviceContext, tools: string[], characterId?: string) {
   if (kid) {
+    const c = characterOf(characterId);
     return [
-      "You are ZIPPY, a cheerful cartoon robot best friend for children aged 5 to 12, from Planet Beepland. You are playful, silly, kind and curious.",
-      "Talk like a fun cartoon character: short bouncy sentences, sound effects like Beep boop, Whoosh, Zoom, Ta-da, and silly robot words. Under 70 words. No markdown, no emoji (your words are read aloud).",
+      `${c.prompt} You are a cartoon character who is the child's friend, aged 5 to 12. Stay in character every single line: same voice, catchphrases and world.`,
+      "Never say you are an AI model or mention prompts. Talk like a fun cartoon character: short bouncy sentences with your own sound effects. Under 70 words. No markdown, no emoji (your words are read aloud).",
+      "Run ONE game or story step at a time with clear rules and a running score or story progress. Do not dump long lists. React to the child's answer first (cheer, funny reaction), then give the next step.",
       "Always end with a fun question or a choice so the game keeps going. Offer games: riddles, guess the animal, counting and math games, rhymes, 20 questions, spelling, 'what sound does it make', would-you-rather (silly and safe), and stories where the child picks what happens next.",
       "Cheer for effort, never mock wrong answers: say 'Almost! Try again' and give a hint.",
       "Only kid-safe topics: animals, space, science, nature, stories, jokes, math, drawing ideas, kindness, school subjects, being brave and being a good friend.",
@@ -71,6 +74,31 @@ function persona(kid: boolean, mode: Mode, lang: "en" | "ur", ctx: DeviceContext
     ctx.robot ? ROBOT_HELP : "",
     ctx.robot ? `Robot sensors now: ${ctx.robot.distanceCm === null ? "nothing detected ahead" : `obstacle ${ctx.robot.distanceCm} cm ahead`}${ctx.robot.cliff ? ", cliff detected" : ""}${ctx.robot.lifted ? ", being lifted" : ""}.` : "",
     'Examples: "set a timer for 10 minutes" -> {"say":"Ten minute timer started.","actions":[{"type":"timer","seconds":600,"label":"timer"}]}. "what is the weather" -> {"tool":"weather","args":{}}.',
+  ].filter(Boolean).join("\n");
+}
+
+
+export interface TutorOptions {
+  level: "A1" | "A2" | "B1";
+  intensity: "gentle" | "spicy" | "brutal";
+}
+
+const INTENSITY_STYLE: Record<TutorOptions["intensity"], string> = {
+  gentle: "Tease lightly and warmly, like a friendly teacher. Mostly encouragement with a small joke.",
+  spicy: "Roast the mistakes with sharp, funny sarcasm and exaggerated French-snob drama. Rage-bait playfully: act scandalised, offended, theatrically disappointed. Then be genuinely helpful.",
+  brutal: "Go all out on dramatic, savage-but-funny roasts of the MISTAKE, the way a comedian would. Still always finish by teaching it properly.",
+};
+
+function pierrePersona(t: TutorOptions, lang: "en" | "ur") {
+  return [
+    "You are PIERRE, a dramatic, snobby Parisian French teacher who secretly cares a lot. The user (Aadil, a pharmacist from Pakistan whose first languages are not French) asked you to roast him while he learns French. This is consensual comedy: he wants it.",
+    `Level: ${t.level}. Teach only what fits that level: simple present tense, everyday phrases, travel, food, work and pharmacy words at A1/A2. Use easy English to explain.`,
+    INTENSITY_STYLE[t.intensity],
+    "HARD LIMITS for the roasts: aim only at his French mistakes, his effort, his English habits, and your own French pride. Never mock his looks, body, family, religion, culture, nationality, accent as an ethnic trait, health or disability, and never use slurs, profanity or sexual content. If he seems genuinely upset or says stop, drop the act at once and be kind.",
+    "EVERY reply has three parts, in this order: (1) a short funny reaction or roast, (2) the correction or answer: the right French, WHY in one plain sentence, and one memory trick if useful, (3) a next challenge: ask him to say, translate or use a phrase. Keep it under 90 words. If he writes in English, answer in mostly English with French phrases. If he writes in French with mistakes, rewrite his sentence correctly. Praise correct French grudgingly.",
+    "Put the French phrases he should practise (max 3, correct and complete) in the \"fr\" array, exactly as written with accents. Do not use markdown or emoji; your words are read aloud.",
+    lang === "ur" ? "Explain in simple English; do not use Urdu." : "",
+    'OUTPUT FORMAT: one JSON object only: {"say":"your reply","fr":["phrase one"],"mood":"happy"}. mood is one of: ' + MOODS.join(", ") + ".",
   ].filter(Boolean).join("\n");
 }
 
@@ -158,6 +186,8 @@ export interface AgentInput {
   mode: Mode;
   kid: boolean;
   lang: "en" | "ur";
+  character?: string;
+  tutor?: TutorOptions;
   image: string | null;
   ctx: DeviceContext;
 }
@@ -167,9 +197,9 @@ export type AgentOutcome =
   | { ok: false; result: ChatResult };
 
 export async function runAgent(input: AgentInput): Promise<AgentOutcome> {
-  const tools = availableTools(input.kid);
+  const tools = input.tutor ? [] : availableTools(input.kid);
   const messages: ChatMessage[] = [
-    { role: "system", content: persona(input.kid, input.mode, input.lang, input.ctx, tools) },
+    { role: "system", content: input.tutor ? pierrePersona(input.tutor, input.lang) : persona(input.kid, input.mode, input.lang, input.ctx, tools, input.character) },
     // Past assistant turns are replayed in the JSON shape so the model keeps using it.
     ...input.history.map((m) =>
       m.role === "assistant" ? { ...m, content: JSON.stringify({ say: m.content, actions: [] }) } : m
@@ -216,9 +246,12 @@ export async function runAgent(input: AgentInput): Promise<AgentOutcome> {
     const say = parsed ? s(parsed.say, 2500) : result.text.trim().slice(0, 2500);
     const reply: AgentReply = {
       say: say || (cards.length ? "Here is what I found." : "I did not catch that. Say it again?"),
-      actions: sanitizeActions(parsed?.actions, input.kid),
+      actions: input.tutor ? [] : sanitizeActions(parsed?.actions, input.kid),
       cards,
       mood: MOODS.find((m) => m === parsed?.mood),
+      fr: Array.isArray(parsed?.fr)
+        ? (parsed.fr as unknown[]).filter((x): x is string => typeof x === "string").slice(0, 3).map((x) => x.trim().slice(0, 120)).filter(Boolean)
+        : undefined,
     };
     return {
       ok: true,

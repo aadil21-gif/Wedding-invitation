@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { PREF, useBoolPref, usePref } from "@/lib/prefs";
 import { speak } from "@/lib/speech";
 import { ProviderStatus } from "./ProviderStatus";
@@ -52,6 +53,7 @@ export function SettingsPanel() {
         </p>
         <Toggle label="Share rough location (weather, nearby)" prefKey={PREF.loc} />
         <AlertsButton />
+        <InstallButton />
         <LanguagePick />
       </fieldset>
 
@@ -122,6 +124,41 @@ function LanguagePick() {
   );
 }
 
+interface InstallEvent extends Event {
+  prompt: () => Promise<void>;
+}
+
+function InstallButton() {
+  const [ev, setEv] = useState<InstallEvent | null>(null);
+  useEffect(() => {
+    const on = (e: Event) => {
+      e.preventDefault();
+      setEv(e as InstallEvent);
+    };
+    window.addEventListener("beforeinstallprompt", on);
+    return () => window.removeEventListener("beforeinstallprompt", on);
+  }, []);
+  const installed = typeof window !== "undefined" && window.matchMedia("(display-mode: standalone)").matches;
+  if (installed) return <p className="text-sm opacity-70">SeeFar is installed as an app.</p>;
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        disabled={!ev}
+        onClick={() => void ev?.prompt()}
+        className="touch-target rounded-lg border-2 border-[var(--border)] px-4 font-bold disabled:opacity-60"
+      >
+        Install SeeFar as an app
+      </button>
+      {!ev && (
+        <p className="text-sm opacity-70">
+          If this is greyed out, open Chrome&apos;s menu and tap Add to Home screen / Install app.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function AlertsButton() {
   const supported = typeof window !== "undefined" && "Notification" in window;
   return (
@@ -151,7 +188,6 @@ function VoicePick() {
         {[
           ["robot", "Robot"],
           ["natural", "Natural"],
-          ["cartoon", "Cartoon"],
         ].map(([value, label]) => (
           <button
             key={value}
@@ -171,12 +207,22 @@ function VoicePick() {
           </button>
         ))}
       </div>
-      <p className="text-sm opacity-70">Kid mode always uses the cartoon voice.</p>
+      <StudioToggle />
+      <p className="text-sm opacity-70">Kid mode uses each character\u2019s own voice.</p>
     </div>
   );
 }
 
+function StudioToggle() {
+  const [on, setOn] = useBoolPref(PREF.studio, true);
+  return (
+    <label className="touch-target flex items-center gap-3 font-bold">
+      <input type="checkbox" checked={on} onChange={(e) => setOn(e.target.checked)} className="h-6 w-6" />
+      AI voices (better sound; the text is sent to Google to be spoken)
+    </label>
+  );
+}
+
 function speakPreview(style: string) {
-  const s = style === "natural" || style === "cartoon" ? style : "robot";
-  speak("Beep boop. This is my voice.", "en", undefined, s);
+  speak("Hello. This is how I sound. Beep boop.", "en", undefined, style === "natural" ? "natural" : "robot");
 }

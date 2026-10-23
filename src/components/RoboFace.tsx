@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { Mood } from "@/lib/agent/types";
+import type { FaceKind } from "@/lib/characters";
 import type { OrbState } from "./HudCore";
 import { useSettings } from "./SettingsProvider";
 
@@ -15,12 +16,14 @@ export function RoboFace({
   motion,
   kid,
   compact = false,
+  face = "robot",
 }: {
   state: OrbState;
   mood: Mood;
   motion: boolean;
   kid: boolean;
   compact?: boolean;
+  face?: FaceKind;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const live = useRef({ state, mood });
@@ -92,6 +95,7 @@ export function RoboFace({
       ctx.fill();
       ctx.stroke();
 
+      if (face === "robot") {
       // antenna with a light that pulses while listening
       ctx.beginPath();
       ctx.moveTo(W / 2, 34);
@@ -108,6 +112,8 @@ export function RoboFace({
       ctx.fillStyle = accent;
       ctx.fillRect(10, 110, 14, 50);
       ctx.fillRect(W - 24, 110, 14, 50);
+
+      }
 
       const ex = [W / 2 - 62 + lookX, W / 2 + 62 + lookX];
       const ey = 120;
@@ -236,12 +242,142 @@ export function RoboFace({
         ctx.stroke();
       }
 
+
+      // character decoration drawn over the shared face
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      if (face === "pirate") {
+        ctx.fillStyle = "#1b1b2f";
+        ctx.strokeStyle = accent2;
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(40, 52);
+        ctx.quadraticCurveTo(W / 2, -26, W - 40, 52);
+        ctx.quadraticCurveTo(W / 2, 40, 40, 52);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = accent2;
+        ctx.beginPath();
+        ctx.arc(W / 2, 22, 7, 0, Math.PI * 2);
+        ctx.fill();
+        // eyepatch with strap
+        ctx.fillStyle = "#1b1b2f";
+        ctx.strokeStyle = "#1b1b2f";
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(26, 78);
+        ctx.lineTo(W / 2 + 62 + lookX, 100);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(W / 2 + 62 + lookX, ey, 32, 34, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (face === "cat") {
+        ctx.fillStyle = accent;
+        [[40, 50, 70, -2, 100, 46], [W - 40, 50, W - 70, -2, W - 100, 46]].forEach(([x1, y1, x2, y2, x3, y3]) => {
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.lineTo(x3, y3);
+          ctx.closePath();
+          ctx.fill();
+        });
+        ctx.strokeStyle = accent;
+        ctx.lineWidth = 4;
+        [-1, 1].forEach((side) => {
+          [-8, 6, 20].forEach((dy) => {
+            ctx.beginPath();
+            ctx.moveTo(W / 2 + side * 50, 212 + dy * 0.4);
+            ctx.lineTo(W / 2 + side * 120, 204 + dy);
+            ctx.stroke();
+          });
+        });
+        ctx.fillStyle = accent2;
+        ctx.beginPath();
+        ctx.moveTo(W / 2 - 9, 168);
+        ctx.lineTo(W / 2 + 9, 168);
+        ctx.lineTo(W / 2, 180);
+        ctx.fill();
+        // moon on the forehead
+        ctx.fillStyle = accent2;
+        ctx.beginPath();
+        ctx.arc(W / 2, 70, 12, 0.5 * Math.PI, 1.5 * Math.PI);
+        ctx.arc(W / 2 + 6, 70, 9, 1.5 * Math.PI, 0.5 * Math.PI, true);
+        ctx.fill();
+      } else if (face === "owl") {
+        ctx.strokeStyle = accent2;
+        ctx.lineWidth = 6;
+        ex.forEach((x) => {
+          ctx.beginPath();
+          ctx.arc(x, ey, 40, 0, Math.PI * 2);
+          ctx.stroke();
+        });
+        ctx.beginPath();
+        ctx.moveTo(W / 2 - 22, ey);
+        ctx.lineTo(W / 2 + 22, ey);
+        ctx.stroke();
+        ctx.fillStyle = accent;
+        [-1, 1].forEach((side) => {
+          ctx.beginPath();
+          ctx.moveTo(W / 2 + side * 70, 44);
+          ctx.lineTo(W / 2 + side * 100, 0);
+          ctx.lineTo(W / 2 + side * 120, 52);
+          ctx.closePath();
+          ctx.fill();
+        });
+        ctx.fillStyle = accent2;
+        ctx.beginPath();
+        ctx.moveTo(W / 2 - 14, 168);
+        ctx.lineTo(W / 2 + 14, 168);
+        ctx.lineTo(W / 2, 192);
+        ctx.closePath();
+        ctx.fill();
+        // graduation cap
+        ctx.fillStyle = "#222";
+        ctx.beginPath();
+        ctx.moveTo(W / 2 - 70, 34);
+        ctx.lineTo(W / 2, 8);
+        ctx.lineTo(W / 2 + 70, 34);
+        ctx.lineTo(W / 2, 52);
+        ctx.closePath();
+        ctx.fill();
+      } else if (face === "dino") {
+        ctx.fillStyle = accent2;
+        for (let i = 0; i < 5; i++) {
+          const x = 70 + i * 45;
+          ctx.beginPath();
+          ctx.moveTo(x - 16, 38);
+          ctx.lineTo(x, 2 + (i % 2) * 6);
+          ctx.lineTo(x + 16, 38);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.fillStyle = bg;
+        [-1, 1].forEach((side) => {
+          ctx.beginPath();
+          ctx.arc(W / 2 + side * 14, 166, 5, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.fillStyle = "#ffffff";
+        [-1, 1].forEach((side) => {
+          for (let k = 0; k < 2; k++) {
+            ctx.beginPath();
+            ctx.moveTo(W / 2 + side * (30 + k * 18) - 7, 186);
+            ctx.lineTo(W / 2 + side * (30 + k * 18) + 7, 186);
+            ctx.lineTo(W / 2 + side * (30 + k * 18), 202);
+            ctx.closePath();
+            ctx.fill();
+          }
+        });
+      }
+      ctx.restore();
+
       if (animate) raf = requestAnimationFrame(draw);
     };
 
     draw();
     return () => cancelAnimationFrame(raf);
-  }, [motion, theme, kid]);
+  }, [motion, theme, kid, face]);
 
   return (
     <canvas

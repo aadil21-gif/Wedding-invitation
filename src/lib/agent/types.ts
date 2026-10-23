@@ -67,4 +67,6 @@ export interface AgentReply {
   cards: Card[];
   /** Facial expression for the on-screen face and the robot's own screen. */
   mood?: Mood;
+  /** French phrases worth practising, from the French tutor. */
+  fr?: string[];
 }

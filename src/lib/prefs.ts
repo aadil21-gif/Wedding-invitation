@@ -14,6 +14,11 @@ export const PREF = {
   loc: "seefar:loc",
   voice: "seefar:voice",
   face: "seefar:face",
+  studio: "seefar:studio",
+  character: "seefar:character",
+  roast: "seefar:roast",
+  fr: "seefar:fr",
+  frlevel: "seefar:fr-level",
 } as const;
 
 const listeners = new Set<() => void>();

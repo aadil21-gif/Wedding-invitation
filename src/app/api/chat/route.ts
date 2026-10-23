@@ -111,6 +111,13 @@ export async function POST(request: NextRequest) {
   const kid = body?.kid === true;
   const lang = body?.lang === "ur" ? "ur" : "en";
   const image = cleanImage(body?.image);
+  const tutor =
+    body?.tutor === "fr" && !kid
+      ? {
+          level: (["A1", "A2", "B1"] as const).find((l) => l === body?.level) ?? "A1",
+          intensity: (["gentle", "spicy", "brutal"] as const).find((i) => i === body?.intensity) ?? "spicy",
+        }
+      : undefined;
 
   if (image === "invalid") {
     return NextResponse.json({ error: "That photo could not be used. Try again." }, { status: 400 });
@@ -127,6 +134,8 @@ export async function POST(request: NextRequest) {
     mode,
     kid,
     lang,
+    tutor,
+    character: typeof body?.character === "string" ? body.character : undefined,
     image,
     // Kid mode never receives personal memory, notes or location (robot state is fine).
     ctx: kid

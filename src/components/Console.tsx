@@ -24,6 +24,9 @@ import { HudCore, type OrbState } from "./HudCore";
 import { MemoryManager } from "./MemoryManager";
 import { RoboFace } from "./RoboFace";
 import { RobotPanel } from "./RobotPanel";
+import { FrenchPanel } from "./FrenchPanel";
+import { characterOf, type CharacterId } from "@/lib/characters";
+import { CharacterPicker } from "./CharacterPicker";
 import { SettingsPanel } from "./SettingsPanel";
 import { Typewriter } from "./Typewriter";
 
@@ -62,16 +65,6 @@ const QUICK: { label: string; say: string }[] = [
   { label: "Take a note", say: "Take a note: " },
 ];
 
-const KID_TILES: { icon: string; label: string; say: string; color: string }[] = [
-  { icon: "🚀", label: "Space fact", say: "Tell me an amazing space fact", color: "#7c3aed" },
-  { icon: "🐱", label: "Space cat story", say: "Tell me a funny story about a space cat", color: "#ec4899" },
-  { icon: "🧩", label: "Riddle", say: "Ask me a riddle", color: "#0ea5e9" },
-  { icon: "🔢", label: "Math game", say: "Let's play a fun math game", color: "#22c55e" },
-  { icon: "🦁", label: "Guess the animal", say: "Let's play guess the animal", color: "#f59e0b" },
-  { icon: "😂", label: "Joke", say: "Tell me a joke", color: "#ef4444" },
-  { icon: "🎵", label: "Silly rhyme", say: "Make a silly rhyme", color: "#14b8a6" },
-  { icon: "🎨", label: "Drawing idea", say: "Give me a fun drawing idea", color: "#a855f7" },
-];
 
 /** Instant, offline reactions to the robot's sensors (no AI call, so they are immediate). */
 const REACTIONS: Record<RobotEvent, { adult: string[]; kid: string[]; mood: Mood; sfx: "ouch" | "whee" | "giggle" }> = {
@@ -147,6 +140,9 @@ export function Console() {
   const [awake, setAwake] = useState(false);
   const [mood, setMood] = useState<Mood>("neutral");
   const [showRobot, setShowRobot] = useState(false);
+  const [showFrench, setShowFrench] = useState(
+    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("open") === "french"
+  );
 
   const [motionOn] = useBoolPref(PREF.motion, true);
   const [speakOn] = useBoolPref(PREF.speak, true);
@@ -158,7 +154,17 @@ export function Console() {
   const robot = useRobot();
   const [kid, setKid] = useBoolPref(PREF.kid, false);
   const voiceLang: VoiceLang = lang === "ur" ? "ur" : "en";
-  const voiceStyle: VoiceStyle = kid ? "cartoon" : voicePref === "natural" || voicePref === "cartoon" ? voicePref : "robot";
+  const [charPref, setCharPref] = usePref(PREF.character, "zippy");
+  const character = characterOf(charPref);
+  const charId = character.id;
+  const voiceStyle: VoiceStyle = kid ? charId : voicePref === "natural" ? "natural" : "robot";
+  const KID_TILES = character.activities;
+  const pickCharacter = (id: CharacterId) => {
+    stopSpeaking();
+    setCharPref(id);
+    play("kid");
+    speak(characterOf(id).intro, voiceLang, undefined, id);
+  };
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -173,12 +179,14 @@ export function Console() {
 
   // ---------- clock, timers, reminders ----------
 
+  const voiceRef = useRef<{ speakOn: boolean; lang: VoiceLang; style: VoiceStyle }>({ speakOn: true, lang: "en", style: "robot" });
   const fireAlert = useCallback(
     (title: string, body: string) => {
       play("alarm");
       idRef.current += 1;
       setLog((prev) => [...prev, { id: idRef.current, role: "system", text: `${title}: ${body}` }]);
-      if (speakOn) speak(`${title}. ${body}`, voiceLang, undefined, voiceStyle);
+      const v = voiceRef.current;
+      if (v.speakOn) speak(`${title}. ${body}`, v.lang, undefined, v.style);
       try {
         if (document.hidden && "Notification" in window && Notification.permission === "granted") {
           void navigator.serviceWorker?.ready.then((r) =>
@@ -189,8 +197,12 @@ export function Console() {
         // Notifications are a bonus; the in-app alert already fired.
       }
     },
-    [speakOn, voiceLang, voiceStyle]
+    []
   );
+
+  useEffect(() => {
+    voiceRef.current = { speakOn, lang: voiceLang, style: voiceStyle };
+  }, [speakOn, voiceLang, voiceStyle]);
 
   useEffect(() => {
     const tick = () => {
@@ -296,7 +308,7 @@ export function Console() {
 
   /** Speaks with the chosen voice style, preceded by a little robot chatter. */
   function talk(text: string, onEnd?: () => void) {
-    if (voiceStyle !== "natural") play("chatter");
+    if (voiceStyle === "robot" || voiceStyle === "zippy") play("chatter");
     speak(text, voiceLang, onEnd, voiceStyle);
   }
 
@@ -365,7 +377,7 @@ export function Console() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, history, mode, kid, lang, image, context: buildContext() }),
+        body: JSON.stringify({ message: text, history, mode, kid, character: kid ? charId : undefined, lang, image, context: buildContext() }),
       });
       if (response.status === 401) {
         router.push("/login?next=/");
@@ -482,7 +494,7 @@ export function Console() {
 
   // ---------- voice: "Hey SeeFar" always-listening loop ----------
 
-  const hfActive = handsfree && booted && !busy && !speaking && !manualListening && !pinMode && !showSystems;
+  const hfActive = handsfree && booted && !busy && !speaking && !manualListening && !pinMode && !showSystems && !showFrench;
 
   useEffect(() => {
     if (!hfActive) return;
@@ -599,7 +611,7 @@ export function Console() {
     setBooted(true);
     setBooting(false);
     play("wake");
-    if (speakOn) talk(kid ? "Beep boop! Zippy is online! Pick a game!" : "SeeFar online. How can I help?");
+    if (speakOn) talk(kid ? character.intro : "SeeFar online. How can I help?");
   }
 
   // ---------- kid mode ----------
@@ -676,13 +688,13 @@ export function Console() {
 
   if (!booted) {
     return (
-      <div className={`app-root ${kid ? "kid-skin" : ""} flex-1 flex flex-col items-center justify-center gap-5 p-6 text-center`} data-motion={motionOn ? "on" : "off"}>
+      <div className={`app-root ${kid ? "kid-skin" : ""} flex-1 flex flex-col items-center justify-center gap-5 p-6 text-center`} data-motion={motionOn ? "on" : "off"} style={kid ? ({ "--accent": character.color, "--accent-2": character.color2 } as React.CSSProperties) : undefined}>
         {kid || facePref ? (
-          <RoboFace state={booting ? "thinking" : "standby"} mood="happy" motion={motionOn} kid={kid} />
+          <RoboFace state={booting ? "thinking" : "standby"} mood="happy" motion={motionOn} kid={kid} face={kid ? character.face : "robot"} />
         ) : (
           <HudCore state={booting ? "thinking" : "standby"} motion={motionOn} kid={kid} />
         )}
-        <h1 className="hud-title text-4xl font-bold">{kid ? "MISSION CONTROL" : "SEEFAR"}</h1>
+        <h1 className="hud-title text-4xl font-bold">{kid ? character.name.toUpperCase() : "SEEFAR"}</h1>
         {booting ? (
           <ul className="hud-mono text-left text-sm leading-relaxed" aria-live="polite">
             {bootLines.map((l) => (
@@ -702,10 +714,10 @@ export function Console() {
   }
 
   return (
-    <div className={`app-root ${kid ? "kid-skin" : ""} flex-1 flex flex-col items-center gap-2 px-3 pb-3 pt-2`} data-motion={motionOn ? "on" : "off"}>
+    <div className={`app-root ${kid ? "kid-skin" : ""} flex-1 flex flex-col items-center gap-2 px-3 pb-3 pt-2`} data-motion={motionOn ? "on" : "off"} style={kid ? ({ "--accent": character.color, "--accent-2": character.color2 } as React.CSSProperties) : undefined}>
       <header className="w-full max-w-xl flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <h1 className="hud-title text-xl font-bold leading-none">{kid ? "MISSION CONTROL" : "SEEFAR"}</h1>
+          <h1 className="hud-title text-xl font-bold leading-none">{kid ? character.name.toUpperCase() : "SEEFAR"}</h1>
           <p className="hud-mono text-xs opacity-80 mt-1">
             {clock} · {dateStr}
             {battery !== null ? ` · BAT ${battery}%` : ""}
@@ -729,6 +741,9 @@ export function Console() {
             <>
               <button type="button" onClick={enterKidMode} className="touch-target hud-chip rounded px-3 font-bold text-sm">
                 KID
+              </button>
+              <button type="button" onClick={() => setShowFrench(true)} className="touch-target hud-chip rounded px-3 font-bold text-sm">
+                FR
               </button>
               <button
                 type="button"
@@ -788,7 +803,7 @@ export function Console() {
 
       <div className="flex flex-col items-center">
         {kid || facePref ? (
-          <RoboFace state={orb} mood={mood} motion={motionOn} kid={kid} compact={camOn} />
+          <RoboFace state={orb} mood={mood} motion={motionOn} kid={kid} compact={camOn} face={kid ? character.face : "robot"} />
         ) : (
           <HudCore state={orb} motion={motionOn} kid={kid} compact={camOn} />
         )}
@@ -852,6 +867,7 @@ export function Console() {
         {log.length === 0 && (
           kid ? (
             <div className="grid grid-cols-2 gap-3">
+              <CharacterPicker current={character.id} onPick={pickCharacter} />
               {KID_TILES.map((k) => (
                 <button
                   key={k.label}
@@ -1025,6 +1041,8 @@ export function Console() {
           </div>
         </div>
       )}
+
+      {showFrench && <FrenchPanel onClose={() => setShowFrench(false)} />}
 
       {showSystems && (
         <div role="dialog" aria-modal="true" aria-label="Systems" className="overlay">
