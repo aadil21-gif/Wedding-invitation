@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #121212;
+  --surface: #f2f2f2;
+  --accent: #0b4ea2;
+  --accent-foreground: #ffffff;
+  --border: #4d4d4d;
+  --font-scale: 1;
+}
+
+:root[data-theme="dark"] {
+  /* High-contrast dark, not just inverted grey — chosen for low-vision use. */
+  --background: #000000;
+  --foreground: #ffffff;
+  --surface: #1a1a1a;
+  --accent: #6cb4ff;
+  --accent-foreground: #000000;
+  --border: #e0e0e0;
+}
+
+:root[data-text-size="large"] {
+  --font-scale: 1.15;
+}
+:root[data-text-size="x-large"] {
+  --font-scale: 1.3;
+}
+:root[data-text-size="xx-large"] {
+  --font-scale: 1.6;
+}
+
+html {
+  font-size: calc(100% * var(--font-scale));
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --font-sans: var(--font-body);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+/* Accessibility baseline: every interactive control gets at least this
+   footprint (WCAG 2.5.5 AAA target size), regardless of Tailwind padding
+   utilities used on top of it. */
+.touch-target {
+  min-height: 56px;
+  min-width: 56px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
