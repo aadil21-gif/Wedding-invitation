@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 interface ChatResult {
@@ -13,6 +14,7 @@ interface ChatResult {
  * our own /api/chat route. Voice in/out, memory and tools are M1-M3.
  */
 export function ChatDemo() {
+  const router = useRouter();
   const [question, setQuestion] = useState("");
   const [result, setResult] = useState<ChatResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +34,13 @@ export function ChatDemo() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: question }),
       });
+      if (response.status === 401) {
+        // Not signed in (or the passcode cookie expired): go to the login
+        // screen instead of showing a dead-end error.
+        router.push("/login?next=/");
+        return;
+      }
+
       const data = await response.json();
 
       if (!response.ok) {
