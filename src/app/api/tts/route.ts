@@ -4,7 +4,8 @@ import { VOICE_SPECS, isVoiceStyle } from "@/lib/voices";
 export const maxDuration = 30;
 
 /** Free-tier Gemini TTS models, best first (checked on the Gemini pricing page, 2026-10-23). */
-const TTS_MODELS = ["gemini-3.8-flash-tts", "gemini-3.8-flash-lite-tts"];
+// Lite first: it answers faster, and a late voice was the main complaint.
+const TTS_MODELS = ["gemini-3.8-flash-lite-tts", "gemini-3.8-flash-tts"];
 const MAX_CHARS = 320;
 const cache = new Map<string, string>();
 
@@ -54,7 +55,8 @@ export async function POST(request: NextRequest) {
   const cached = cache.get(cacheKey);
   if (cached) return audioResponse(cached);
 
-  const prompt = `${spec.direction}. Say the following:\n${text}`;
+  // Only the words to speak: any instruction text sent here gets read out loud.
+  const prompt = text;
   let lastErr: unknown;
   for (const model of TTS_MODELS) {
     try {

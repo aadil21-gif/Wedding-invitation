@@ -1,91 +1,8 @@
 /** French practice: starter deck, scoring, roast lines and spaced-repetition progress. */
 
-export interface FrCard {
-  id: string;
-  fr: string;
-  en: string;
-  group: string;
-  /** Optional memory trick shown after a miss. */
-  tip?: string;
-}
-
-const g = (group: string, rows: [string, string, string?][]): FrCard[] =>
-  rows.map(([fr, en, tip]) => ({ id: `${group}:${fr}`, fr, en, group, tip }));
-
-export const DECK: FrCard[] = [
-  ...g("Greetings", [
-    ["bonjour", "hello / good day", "Bon + jour: good day. Use it until about 6 pm."],
-    ["bonsoir", "good evening"],
-    ["salut", "hi / bye (informal)"],
-    ["au revoir", "goodbye"],
-    ["à bientôt", "see you soon"],
-    ["merci", "thank you"],
-    ["merci beaucoup", "thank you very much"],
-    ["s'il vous plaît", "please (formal)"],
-    ["de rien", "you're welcome"],
-    ["pardon", "sorry / excuse me"],
-    ["excusez-moi", "excuse me (formal)"],
-    ["oui", "yes"],
-    ["non", "no"],
-    ["peut-être", "maybe"],
-    ["d'accord", "okay / agreed"],
-  ]),
-  ...g("Talking", [
-    ["comment allez-vous ?", "how are you? (formal)"],
-    ["ça va ?", "how's it going?"],
-    ["ça va bien, merci", "I'm fine, thanks"],
-    ["je m'appelle Aadil", "my name is Aadil"],
-    ["enchanté", "nice to meet you"],
-    ["je ne comprends pas", "I don't understand"],
-    ["parlez-vous anglais ?", "do you speak English?"],
-    ["je parle un peu français", "I speak a little French"],
-    ["répétez, s'il vous plaît", "repeat, please"],
-    ["parlez plus lentement, s'il vous plaît", "speak more slowly, please"],
-  ]),
-  ...g("Numbers", [
-    ["un", "one"], ["deux", "two"], ["trois", "three"], ["quatre", "four"], ["cinq", "five"],
-    ["six", "six"], ["sept", "seven"], ["huit", "eight"], ["neuf", "nine"], ["dix", "ten"],
-    ["vingt", "twenty"], ["cent", "one hundred"],
-  ]),
-  ...g("Food", [
-    ["le pain", "bread"], ["le fromage", "cheese"], ["l'eau", "water"], ["le café", "coffee"],
-    ["le lait", "milk"], ["la pomme", "apple"], ["le riz", "rice"], ["le poulet", "chicken"],
-    ["je voudrais un café", "I would like a coffee", "Je voudrais is the polite way to ask. Never je veux with a waiter."],
-    ["je suis végétarien", "I'm vegetarian"],
-    ["sans viande", "without meat"],
-    ["l'addition, s'il vous plaît", "the bill, please"],
-    ["c'est délicieux", "it's delicious"],
-  ]),
-  ...g("Getting around", [
-    ["où est la gare ?", "where is the station?"],
-    ["à gauche", "to the left"],
-    ["à droite", "to the right"],
-    ["tout droit", "straight ahead"],
-    ["l'aéroport", "the airport"],
-    ["l'hôtel", "the hotel"],
-    ["combien ça coûte ?", "how much does it cost?"],
-    ["la pharmacie", "the pharmacy"],
-    ["l'hôpital", "the hospital"],
-    ["j'ai besoin d'un médecin", "I need a doctor"],
-    ["le médicament", "the medicine"],
-    ["l'ordonnance", "the prescription"],
-  ]),
-  ...g("Core verbs", [
-    ["je suis", "I am", "être: je suis, tu es, il est."],
-    ["j'ai", "I have", "avoir: j'ai, tu as, il a."],
-    ["je vais", "I go / I'm going"],
-    ["je veux", "I want"],
-    ["je peux", "I can"],
-    ["je fais", "I do / I make"],
-  ]),
-  ...g("Time and words", [
-    ["aujourd'hui", "today"], ["demain", "tomorrow"], ["hier", "yesterday"], ["maintenant", "now"],
-    ["toujours", "always"], ["jamais", "never"], ["le matin", "the morning"], ["le soir", "the evening"],
-    ["qui", "who"], ["quoi", "what"], ["où", "where"], ["quand", "when"],
-    ["pourquoi", "why"], ["comment", "how"],
-    ["rouge", "red"], ["bleu", "blue"], ["vert", "green"], ["jaune", "yellow"], ["noir", "black"], ["blanc", "white"],
-  ]),
-];
+import { DECK, type FrCard } from "./frcourse";
+export { DECK };
+export type { FrCard };
 
 /** Lowercase, no accents, no punctuation: so a missing accent is "close", not wrong. */
 export function plain(s: string): string {
@@ -164,12 +81,14 @@ export function roastFor(score: number, intensity: Intensity, target: string): s
 
 export interface FrProgress {
   cards: Record<string, { box: number; due: number }>;
+  /** Best call-mission score (0..1) per unit id. */
+  missions: Record<string, number>;
   xp: number;
   streak: number;
   lastDay: string;
 }
 
-export const EMPTY_PROGRESS: FrProgress = { cards: {}, xp: 0, streak: 0, lastDay: "" };
+export const EMPTY_PROGRESS: FrProgress = { cards: {}, missions: {}, xp: 0, streak: 0, lastDay: "" };
 const DAY = 86_400_000;
 /** Review gaps per Leitner box, in days. */
 const GAPS = [0, 1, 3, 7, 21];
@@ -177,7 +96,7 @@ const GAPS = [0, 1, 3, 7, 21];
 export function parseProgress(raw: string): FrProgress {
   try {
     const p = JSON.parse(raw);
-    if (p && typeof p === "object" && p.cards) return { ...EMPTY_PROGRESS, ...p };
+    if (p && typeof p === "object" && p.cards) return { ...EMPTY_PROGRESS, ...p, missions: p.missions ?? {} };
   } catch {
     // fall through
   }
@@ -198,6 +117,7 @@ export function review(p: FrProgress, id: string, correct: boolean, now = Date.n
     streak = p.lastDay === dayKey(now - DAY) ? p.streak + 1 : 1;
   }
   return {
+    ...p,
     cards: { ...p.cards, [id]: { box, due: now + GAPS[box] * DAY } },
     xp: p.xp + (correct ? 10 : 2),
     streak,

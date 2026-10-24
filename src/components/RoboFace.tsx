@@ -341,6 +341,36 @@ export function RoboFace({
         ctx.lineTo(W / 2, 52);
         ctx.closePath();
         ctx.fill();
+      } else if (face === "french") {
+        // beret
+        ctx.fillStyle = "#1d3a8a";
+        ctx.strokeStyle = "#0f1f4d";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.ellipse(W / 2 + 12, 42, 104, 34, -0.12, Math.PI, 0);
+        ctx.quadraticCurveTo(W / 2 + 40, 62, W / 2 - 80, 60);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#0f1f4d";
+        ctx.beginPath();
+        ctx.arc(W / 2 + 14, 6, 7, 0, Math.PI * 2);
+        ctx.fill();
+        // curly moustache
+        ctx.strokeStyle = "#2a1b12";
+        ctx.lineWidth = 9;
+        [-1, 1].forEach((side) => {
+          ctx.beginPath();
+          ctx.moveTo(W / 2, 172);
+          ctx.bezierCurveTo(W / 2 + side * 30, 160, W / 2 + side * 62, 170, W / 2 + side * 70, 154);
+          ctx.stroke();
+        });
+        // tricolour scarf stripe
+        const stripe = ["#1d3a8a", "#ffffff", "#ef4135"];
+        stripe.forEach((c, i) => {
+          ctx.fillStyle = c;
+          ctx.fillRect(40 + i * ((W - 80) / 3), H - 24, (W - 80) / 3, 10);
+        });
       } else if (face === "dino") {
         ctx.fillStyle = accent2;
         for (let i = 0; i < 5; i++) {

@@ -2,8 +2,9 @@ import { routeChat, type ChatResult } from "../ai/registry";
 import type { ChatMessage } from "../ai/types";
 import { MODE_PROMPTS_PUBLIC, type Mode } from "../assistant";
 import { characterOf } from "../characters";
+import { unitOf } from "../frcourse";
 import { TOOL_HELP, availableTools, runTool } from "./tools";
-import type { Action, AgentReply, Card, DeviceContext, Mood } from "./types";
+import type { Action, AgentReply, CallTurn, Card, DeviceContext, Mood } from "./types";
 
 const MAX_STEPS = 3;
 
@@ -102,6 +103,40 @@ function pierrePersona(t: TutorOptions, lang: "en" | "ur") {
   ].filter(Boolean).join("\n");
 }
 
+
+export interface CallOptions {
+  unitId: string;
+  intensity: TutorOptions["intensity"];
+}
+
+function callPersona(unitId: string, intensity: TutorOptions["intensity"]) {
+  const u = unitOf(unitId);
+  if (!u) return null;
+  const m = u.mission;
+  return [
+    `You are playing ${m.role}, in ${m.setting}. You are also PIERRE, the learner's snobby-but-caring French teacher, listening in and coaching. The learner is Aadil, a complete beginner (A1) with a mission in this role-play.`,
+    `MISSION GOALS (ids): ${m.goals.map((g) => `${g.id} = ${g.label}`).join("; ")}.`,
+    "Speak ONLY simple A1 French as your character: one or two short sentences, common words, present tense. Prefer words from this unit: " + u.cards.map((c) => c.fr).join(", ") + ". Move the scene towards the next unfinished goal, one thing at a time, and ask a question that invites the next goal.",
+    "After each learner message, judge it: mark a goal in goals_done only if the learner really achieved it in French (accents and small spelling slips are fine). If they use English or are unclear, stay in French, simplify, and put the helpful French sentence in en as a hint. If their French has a mistake, fill fix with what they said, the correct version and one plain-English reason; otherwise fix is null.",
+    INTENSITY_STYLE[intensity] + " Put the roast or hint in the en field after the translation, one short sentence. Aim only at the mistakes, never at the person. If the learner says stop or sounds upset, be kind.",
+    "Set finished to true only after all goals are done (and you have said your closing line) or if the learner clearly wants to end.",
+    "The learner's very first message is [START]: just say your opening line in character (suggested: " + m.opener + ") with all goals not yet done.",
+    'OUTPUT FORMAT: one JSON object only: {"say":"your French line","en":"English translation. Hint or roast.","goals_done":["ids achieved so far in total"],"fix":null,"finished":false}. No markdown, no emoji.',
+  ].join("\n");
+}
+
+function toCallTurn(p: Record<string, unknown> | null, say: string): CallTurn {
+  const fx = p?.fix && typeof p.fix === "object" ? (p.fix as Record<string, unknown>) : null;
+  const fix = fx && s(fx.better, 160) ? { said: s(fx.said, 160), better: s(fx.better, 160), why: s(fx.why, 200) } : null;
+  return {
+    fr: say,
+    en: p ? s(p.en, 400) : "",
+    goalsDone: Array.isArray(p?.goals_done) ? (p.goals_done as unknown[]).filter((x): x is string => typeof x === "string").slice(0, 8) : [],
+    fix,
+    finished: p?.finished === true,
+  };
+}
+
 /** Pulls the first JSON object out of a model reply, tolerating code fences and chatter. */
 export function parseModelJson(raw: string): Record<string, unknown> | null {
   const text = raw.replace(/```(?:json)?/gi, "").trim();
@@ -188,6 +223,7 @@ export interface AgentInput {
   lang: "en" | "ur";
   character?: string;
   tutor?: TutorOptions;
+  call?: CallOptions;
   image: string | null;
   ctx: DeviceContext;
 }
@@ -197,9 +233,10 @@ export type AgentOutcome =
   | { ok: false; result: ChatResult };
 
 export async function runAgent(input: AgentInput): Promise<AgentOutcome> {
-  const tools = input.tutor ? [] : availableTools(input.kid);
+  const callSystem = input.call ? callPersona(input.call.unitId, input.call.intensity) : null;
+  const tools = input.tutor || callSystem ? [] : availableTools(input.kid);
   const messages: ChatMessage[] = [
-    { role: "system", content: input.tutor ? pierrePersona(input.tutor, input.lang) : persona(input.kid, input.mode, input.lang, input.ctx, tools, input.character) },
+    { role: "system", content: callSystem ?? (input.tutor ? pierrePersona(input.tutor, input.lang) : persona(input.kid, input.mode, input.lang, input.ctx, tools, input.character)) },
     // Past assistant turns are replayed in the JSON shape so the model keeps using it.
     ...input.history.map((m) =>
       m.role === "assistant" ? { ...m, content: JSON.stringify({ say: m.content, actions: [] }) } : m
@@ -246,9 +283,10 @@ export async function runAgent(input: AgentInput): Promise<AgentOutcome> {
     const say = parsed ? s(parsed.say, 2500) : result.text.trim().slice(0, 2500);
     const reply: AgentReply = {
       say: say || (cards.length ? "Here is what I found." : "I did not catch that. Say it again?"),
-      actions: input.tutor ? [] : sanitizeActions(parsed?.actions, input.kid),
+      actions: input.tutor || callSystem ? [] : sanitizeActions(parsed?.actions, input.kid),
       cards,
       mood: MOODS.find((m) => m === parsed?.mood),
+      call: callSystem ? toCallTurn(parsed, say) : undefined,
       fr: Array.isArray(parsed?.fr)
         ? (parsed.fr as unknown[]).filter((x): x is string => typeof x === "string").slice(0, 3).map((x) => x.trim().slice(0, 120)).filter(Boolean)
         : undefined,

@@ -95,6 +95,11 @@ export function stopSpeaking() {
 
 /** Splits text into pieces the voice service accepts, at sentence ends. */
 export function chunkText(text: string, max = 300): string[] {
+  // A short first piece reaches the ear sooner; the rest is fetched meanwhile.
+  const first = text.match(/^[^.!?؟۔]{20,110}[.!?؟۔]\s+/);
+  if (first && text.length > first[0].length + 40) {
+    return [first[0].trim(), ...chunkText(text.slice(first[0].length), max)].slice(0, 6);
+  }
   const sentences = text.match(/[^.!?؟۔]+[.!?؟۔]*\s*/g) ?? [text];
   const out: string[] = [];
   let cur = "";
@@ -135,7 +140,7 @@ function fetchClip(text: string, style: VoiceStyleId): Promise<AudioBuffer> {
 }
 
 /** Robot voice: ring modulation, a short metallic echo and light distortion. */
-function playClip(buffer: AudioBuffer, fx: boolean, onEnd: () => void) {
+function playClip(buffer: AudioBuffer, fx: boolean, onEnd: () => void, onStart?: () => void) {
   const c = audioCtx();
   if (!c) return onEnd();
   const src = c.createBufferSource();
@@ -189,6 +194,7 @@ function playClip(buffer: AudioBuffer, fx: boolean, onEnd: () => void) {
   };
   currentSource = src;
   src.start();
+  onStart?.();
 }
 
 /** Picks the most natural-sounding voice the phone has for a language. */
@@ -203,7 +209,7 @@ function bestVoice(lang: VoiceLang): SpeechSynthesisVoice | undefined {
   return voices.sort((a, b) => score(b) - score(a))[0];
 }
 
-function speakBrowser(text: string, lang: VoiceLang, style: VoiceStyleId, onEnd?: () => void, myToken = token) {
+function speakBrowser(text: string, lang: VoiceLang, style: VoiceStyleId, onEnd?: () => void, myToken = token, onStart?: () => void) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return onEnd?.();
   const spec = VOICE_SPECS[style];
   window.speechSynthesis.cancel();
@@ -216,6 +222,7 @@ function speakBrowser(text: string, lang: VoiceLang, style: VoiceStyleId, onEnd?
   const done = () => {
     if (myToken === token) onEnd?.();
   };
+  u.onstart = () => onStart?.();
   u.onend = done;
   u.onerror = done;
   window.speechSynthesis.speak(u);
@@ -226,7 +233,7 @@ function speakBrowser(text: string, lang: VoiceLang, style: VoiceStyleId, onEnd?
  * falls back to the best voice installed on the phone. Markdown symbols are
  * stripped so they are not spoken.
  */
-export function speak(text: string, lang: VoiceLang, onEnd?: () => void, style: VoiceStyleId = "natural") {
+export function speak(text: string, lang: VoiceLang, onEnd?: () => void, style: VoiceStyleId = "natural", onStart?: () => void) {
   if (typeof window === "undefined") return onEnd?.();
   stopSpeaking();
   const myToken = token;
@@ -234,7 +241,7 @@ export function speak(text: string, lang: VoiceLang, onEnd?: () => void, style: 
   if (!clean) return onEnd?.();
 
   const studio = readPref(PREF.studio, "1") === "1" && lang !== "ur" && Date.now() > aiCooldownUntil;
-  if (!studio || !audioCtx()) return speakBrowser(clean, lang, style, onEnd, myToken);
+  if (!studio || !audioCtx()) return speakBrowser(clean, lang, style, onEnd, myToken, onStart);
 
   const chunks = chunkText(clean);
   const fx = VOICE_SPECS[style].robotFx;
@@ -248,12 +255,12 @@ export function speak(text: string, lang: VoiceLang, onEnd?: () => void, style: 
     clips[i].then(
       (buf) => {
         if (myToken !== token) return;
-        playClip(buf, fx, () => playFrom(i + 1));
+        playClip(buf, fx, () => playFrom(i + 1), i === 0 ? onStart : undefined);
       },
       () => {
         if (myToken !== token) return;
         aiCooldownUntil = Date.now() + 5 * 60_000;
-        speakBrowser(chunks.slice(i).join(" "), lang, style, onEnd, myToken);
+        speakBrowser(chunks.slice(i).join(" "), lang, style, onEnd, myToken, i === 0 ? onStart : undefined);
       }
     );
   };

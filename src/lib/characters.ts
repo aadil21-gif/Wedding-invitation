@@ -7,7 +7,7 @@
  */
 
 export type CharacterId = "zippy" | "pickle" | "luna" | "hoot" | "roary";
-export type FaceKind = "robot" | "pirate" | "cat" | "owl" | "dino";
+export type FaceKind = "robot" | "pirate" | "cat" | "owl" | "dino" | "french";
 
 export interface Activity {
   icon: string;

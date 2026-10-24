@@ -69,4 +69,16 @@ export interface AgentReply {
   mood?: Mood;
   /** French phrases worth practising, from the French tutor. */
   fr?: string[];
+  /** Turn result of a French call mission. */
+  call?: CallTurn;
+}
+
+export interface CallTurn {
+  /** What Pierre's character says, in French. */
+  fr: string;
+  /** English: translation, plus a hint or a roast. */
+  en: string;
+  goalsDone: string[];
+  fix: { said: string; better: string; why: string } | null;
+  finished: boolean;
 }

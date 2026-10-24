@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { LIMITS, MODES, Mode } from "@/lib/assistant";
+import { unitOf } from "@/lib/frcourse";
 import { runAgent } from "@/lib/agent/run";
 import type { DeviceContext } from "@/lib/agent/types";
 import type { ChatMessage } from "@/lib/ai/types";
@@ -111,11 +112,19 @@ export async function POST(request: NextRequest) {
   const kid = body?.kid === true;
   const lang = body?.lang === "ur" ? "ur" : "en";
   const image = cleanImage(body?.image);
+  const intensity = (["gentle", "spicy", "brutal"] as const).find((i) => i === body?.intensity) ?? "spicy";
+  if (body?.tutor === "call" && !unitOf(body?.unit)) {
+    return NextResponse.json({ error: "Unknown lesson." }, { status: 400 });
+  }
+  const call =
+    body?.tutor === "call" && !kid && typeof body?.unit === "string"
+      ? { unitId: body.unit as string, intensity }
+      : undefined;
   const tutor =
     body?.tutor === "fr" && !kid
       ? {
           level: (["A1", "A2", "B1"] as const).find((l) => l === body?.level) ?? "A1",
-          intensity: (["gentle", "spicy", "brutal"] as const).find((i) => i === body?.intensity) ?? "spicy",
+          intensity,
         }
       : undefined;
 
@@ -135,6 +144,7 @@ export async function POST(request: NextRequest) {
     kid,
     lang,
     tutor,
+    call,
     character: typeof body?.character === "string" ? body.character : undefined,
     image,
     // Kid mode never receives personal memory, notes or location (robot state is fine).

@@ -25,6 +25,7 @@ import { MemoryManager } from "./MemoryManager";
 import { RoboFace } from "./RoboFace";
 import { RobotPanel } from "./RobotPanel";
 import { FrenchPanel } from "./FrenchPanel";
+import { Briefing, type BriefAction } from "./Briefing";
 import { characterOf, type CharacterId } from "@/lib/characters";
 import { CharacterPicker } from "./CharacterPicker";
 import { SettingsPanel } from "./SettingsPanel";
@@ -56,14 +57,6 @@ const MODE_HINT: Record<Mode, string> = {
   math: "Say a sum, or aim at a bill and say: add this up.",
 };
 
-const QUICK: { label: string; say: string }[] = [
-  { label: "Weather", say: "What's the weather today?" },
-  { label: "Prayer times", say: "What are today's prayer times?" },
-  { label: "Timer 5 min", say: "Set a timer for 5 minutes" },
-  { label: "USD to PKR", say: "How much is 100 dollars in rupees?" },
-  { label: "What's the time", say: "What time is it?" },
-  { label: "Take a note", say: "Take a note: " },
-];
 
 
 /** Instant, offline reactions to the robot's sensors (no AI call, so they are immediate). */
@@ -140,6 +133,7 @@ export function Console() {
   const [awake, setAwake] = useState(false);
   const [mood, setMood] = useState<Mood>("neutral");
   const [showRobot, setShowRobot] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const [showFrench, setShowFrench] = useState(
     () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("open") === "french"
   );
@@ -174,6 +168,7 @@ export function Console() {
   const logEndRef = useRef<HTMLDivElement>(null);
   const sendRef = useRef<(text: string) => void>(() => {});
   const awakeUntil = useRef(0);
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
   const locRef = useRef<{ lat: number; lon: number } | null>(null);
   const awakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -307,9 +302,8 @@ export function Console() {
   // ---------- conversation ----------
 
   /** Speaks with the chosen voice style, preceded by a little robot chatter. */
-  function talk(text: string, onEnd?: () => void) {
-    if (voiceStyle === "robot" || voiceStyle === "zippy") play("chatter");
-    speak(text, voiceLang, onEnd, voiceStyle);
+  function talk(text: string, onEnd?: () => void, onStart?: () => void) {
+    speak(text, voiceLang, onEnd, voiceStyle, onStart);
   }
 
   function addEntry(e: Omit<Entry, "id">): number {
@@ -320,6 +314,17 @@ export function Console() {
   }
 
   /** After the assistant speaks, follow-up commands are accepted for 12 s without the wake word. */
+  function onBriefAction(a: BriefAction) {
+    if (a.say) void send(a.say);
+    else if (a.fill) setInput(a.fill);
+    else if (a.mode) {
+      setMode(a.mode);
+      if (!camOn) void startCamera();
+    } else if (a.open === "french") setShowFrench(true);
+    else if (a.open === "kid") enterKidMode();
+    else if (a.open === "robot") setShowRobot(true);
+  }
+
   function openWindow() {
     awakeUntil.current = Date.now() + 12_000;
     setAwake(true);
@@ -372,6 +377,7 @@ export function Console() {
     addEntry({ role: "user", text, note: image ? "camera frame attached" : undefined });
     setInput("");
     setBusy(true);
+    let holdBusy = false;
 
     try {
       const response = await fetch("/api/chat", {
@@ -391,37 +397,52 @@ export function Console() {
       }
 
       const outcome = executeActions(res.actions ?? []);
-      if (res.mood) {
-        setMood(res.mood);
-        setFace(res.mood);
-      }
       if (outcome.wantsCamera && !camOn && !kid) void startCamera();
       const fell: string[] = res.fellBackFrom ?? [];
-      setFreshId(addEntry({
-        role: "assistant",
-        text: res.say,
-        cards: res.cards,
-        links: outcome.links,
-        chips: outcome.chips,
-        note: `${res.providerId}${fell.length ? ` · ${fell.join(", ")} skipped` : ""}`,
-      }));
-      play(kid ? "kid" : "reply");
-      if (outcome.chips.length) play("tick");
+
+      // The words appear at the moment the voice starts, so text never runs ahead of speech.
+      let revealed = false;
+      const reveal = () => {
+        if (revealed) return;
+        revealed = true;
+        if (res.mood) {
+          setMood(res.mood);
+          setFace(res.mood);
+        }
+        setFreshId(addEntry({
+          role: "assistant",
+          text: res.say,
+          cards: res.cards,
+          links: outcome.links,
+          chips: outcome.chips,
+          note: `${res.providerId}${fell.length ? ` · ${fell.join(", ")} skipped` : ""}`,
+        }));
+        play(kid ? "kid" : "reply");
+        if (outcome.chips.length) play("tick");
+        setBusy(false);
+      };
 
       if (speakOn && res.say) {
+        holdBusy = true;
         setSpeaking(true);
-        talk(res.say, () => {
-          setSpeaking(false);
-          openWindow();
-        });
+        talk(
+          res.say,
+          () => {
+            setSpeaking(false);
+            openWindow();
+          },
+          reveal
+        );
+        setTimeout(reveal, 7000);
       } else {
+        reveal();
         openWindow();
       }
     } catch {
       play("error");
       addEntry({ role: "assistant", text: "Could not reach the server. Check your connection.", isError: true });
     } finally {
-      setBusy(false);
+      if (!holdBusy) setBusy(false);
     }
   }
 
@@ -591,6 +612,7 @@ export function Console() {
             lat: Math.round(p.coords.latitude * 100) / 100,
             lon: Math.round(p.coords.longitude * 100) / 100,
           };
+          setCoords(locRef.current);
           resolve();
         },
         () => resolve(),
@@ -885,10 +907,26 @@ export function Console() {
               ))}
             </div>
           ) : (
-            <p className="opacity-70 text-sm">{MODE_HINT[mode]}</p>
+            mode === "general" ? (
+              <Briefing
+                now={now}
+                lat={coords?.lat}
+                lon={coords?.lon}
+                timers={activeTimers}
+                reminders={data.reminders.filter((r) => !r.fired)}
+                onAction={onBriefAction}
+              />
+            ) : (
+              <p className="opacity-70 text-sm">{MODE_HINT[mode]}</p>
+            )
           )
         )}
-        {log.map((m) => (
+        {!showAll && log.length > 3 && (
+          <button type="button" onClick={() => setShowAll(true)} className="hud-mono text-xs opacity-70 self-center underline">
+            EARLIER ({log.length - 3})
+          </button>
+        )}
+        {(showAll ? log : log.slice(-3)).map((m) => (
           <div key={m.id} className="flex flex-col gap-2">
             {m.role === "user" && (
               <p className="hud-mono self-end max-w-[90%] text-right">
@@ -936,7 +974,7 @@ export function Console() {
       </section>
 
       <div className="w-full max-w-xl flex gap-2 overflow-x-auto" aria-label="Quick commands">
-        {(kid ? (log.length ? KID_TILES.map((k) => ({ label: `${k.icon} ${k.label}`, say: k.say })) : []) : QUICK).map((q) => (
+        {(kid ? (log.length ? KID_TILES.map((k) => ({ label: `${k.icon} ${k.label}`, say: k.say })) : []) : []).map((q) => (
           <button
             key={q.label}
             type="button"
