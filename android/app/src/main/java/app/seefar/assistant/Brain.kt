@@ -37,6 +37,13 @@ class Brain(app: Application) : AndroidViewModel(app) {
     var frontCamera by mutableStateOf(false)
     var live by mutableStateOf(false)
     var nudgesOn by mutableStateOf(true)
+    var fastVoice by mutableStateOf(true)
+
+    fun setFast(on: Boolean) {
+        fastVoice = on
+        speaker.mode = if (on) "phone" else "auto"
+        ctx.getSharedPreferences("seefar_prefs", 0).edit().putBoolean("fast", on).apply()
+    }
     var briefLine by mutableStateOf("")
     val chips = mutableStateListOf<String>()
     val cards = mutableStateListOf<String>()
@@ -49,6 +56,8 @@ class Brain(app: Application) : AndroidViewModel(app) {
     fun boot() {
         Api.init(ctx)
         nudgesOn = ctx.getSharedPreferences("seefar_prefs", 0).getBoolean("nudges", true)
+        fastVoice = ctx.getSharedPreferences("seefar_prefs", 0).getBoolean("fast", true)
+        speaker.mode = if (fastVoice) "phone" else "auto"
         viewModelScope.launch {
             screen = if (Api.isLoggedIn()) "home" else "login"
             if (screen == "home") onHome()

@@ -248,6 +248,15 @@ fun SettingsScreen(brain: Brain, close: () -> Unit) {
         Card {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
+                    Text("⚡ Fast voice", color = C.text, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                    Text("On: answers speak instantly with your phone's voice. Off: nicer AI voice, but it can take a few seconds.", color = C.dim, fontSize = 14.sp)
+                }
+                Switch(brain.fastVoice, { brain.setFast(it) })
+            }
+        }
+        Card {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
                     Text("💬 Friendly nudges", color = C.text, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                     Text("A random fact or a tease every few hours (8am to 10pm).", color = C.dim, fontSize = 14.sp)
                 }

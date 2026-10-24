@@ -36,6 +36,9 @@ class Speaker(private val ctx: Context, private val scope: CoroutineScope) {
         tts = TextToSpeech(ctx.applicationContext) { status -> ttsReady.complete(status == TextToSpeech.SUCCESS) }
     }
 
+    /** "auto" = AI voice, but the phone voice steps in if the AI voice is slow. "phone" = always the phone voice (instant). */
+    var mode = "auto"
+
     val speaking: Boolean get() = job?.isActive == true
 
     fun stop() {
@@ -59,7 +62,7 @@ class Speaker(private val ctx: Context, private val scope: CoroutineScope) {
         val out = ArrayList<String>()
         var cur = ""
         for (s in sentences) {
-            val limit = if (out.isEmpty()) 90 else 260
+            val limit = if (out.isEmpty()) 60 else 260
             if (cur.isNotEmpty() && cur.length + s.length + 1 > limit) { out.add(cur); cur = s } else cur = if (cur.isEmpty()) s else "$cur $s"
         }
         if (cur.isNotEmpty()) out.add(cur)
@@ -75,9 +78,13 @@ class Speaker(private val ctx: Context, private val scope: CoroutineScope) {
             var cancelled = false
             val fire = { if (!started) { started = true; onStart() } }
             try {
-                val clips = parts.map { p -> async(Dispatchers.IO) { Api.tts(p, style) } }
+                val clips = if (mode == "phone") null else parts.map { p -> async(Dispatchers.IO) { Api.tts(p, style) } }
                 for ((i, p) in parts.withIndex()) {
-                    val wav = clips[i].await()
+                    val wav = when {
+                        clips == null -> null
+                        i == 0 -> kotlinx.coroutines.withTimeoutOrNull(2200) { clips[0].await() }
+                        else -> clips[i].await()
+                    }
                     if (wav != null && wav.size > 100) playWav(wav, fire) else speakPhone(p, lang, fire)
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
