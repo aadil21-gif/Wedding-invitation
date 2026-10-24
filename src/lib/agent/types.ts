@@ -21,8 +21,8 @@ export type Action =
   | { type: "timer"; seconds: number; label: string }
   | { type: "reminder"; inSeconds?: number; at?: string; text: string }
   | { type: "navigate"; destination: string; mode: "driving" | "walking" | "transit" | "bicycling" }
-  | { type: "call"; number: string }
-  | { type: "whatsapp"; number: string; text: string }
+  | { type: "call"; number?: string; name?: string }
+  | { type: "whatsapp"; number?: string; name?: string; text: string }
   | { type: "music"; query: string }
   | { type: "note"; text: string }
   | { type: "list_add"; list: string; item: string }
@@ -57,6 +57,10 @@ export interface DeviceContext {
   notes: string[];
   timers: { label: string; secondsLeft: number }[];
   reminders: { text: string; at: string }[];
+  /** Android app only: recent notifications ("WhatsApp · Ali: are you coming?"). */
+  notifications?: string[];
+  /** Android app only: time spent in apps today ("Instagram 48 min"). */
+  usage?: string[];
   /** Present only when the robot body is connected. */
   robot?: { distanceCm: number | null; cliff: boolean; lifted: boolean };
 }

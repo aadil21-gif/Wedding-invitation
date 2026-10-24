@@ -279,6 +279,7 @@ export function FrenchPanel({ onClose }: { onClose: () => void }) {
           lang: "en",
           tutor: "call",
           unit: unit.id,
+          help: (progress.missions[unit.id] ?? 0) < 0.75,
           intensity,
           context: { nowIso: new Date().toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
         }),
@@ -382,7 +383,6 @@ export function FrenchPanel({ onClose }: { onClose: () => void }) {
     stopSpeaking();
     setLi(0);
     setScreen({ name: "learn", unit });
-    hear(unit.cards[0].fr);
   }
 
   // ---------- render ----------
@@ -500,57 +500,74 @@ export function FrenchPanel({ onClose }: { onClose: () => void }) {
         )}
 
         {/* ---------------- LEARN ---------------- */}
-        {screen.name === "learn" && (
-          <div className="flex flex-col gap-3">
-            <p className="hud-mono text-xs opacity-70">
-              PHRASE {li + 1}/{screen.unit.cards.length}
-            </p>
-            {(() => {
-              const c = screen.unit.cards[li];
-              return (
-                <div className="panel p-4 flex flex-col gap-3 text-center">
-                  <Picture emoji={c.emoji} />
-                  <p className="text-3xl font-bold">{c.fr}</p>
-                  <p className="text-lg">{c.en}</p>
-                  {c.tip && <p className="text-sm opacity-80">💡 {c.tip}</p>}
-                  <button type="button" onClick={() => hear(c.fr)} className="touch-target hud-chip rounded px-4 font-bold self-center">
-                    🔊 HEAR
-                  </button>
+        {screen.name === "learn" && (() => {
+          const L = screen.unit.lesson;
+          const total = L.length + screen.unit.cards.length;
+          const inLesson = li < L.length;
+          const lastIdx = total - 1;
+          const go = (n: number) => {
+            setLi(n);
+            if (n >= L.length) hear(screen.unit.cards[n - L.length].fr);
+            else stopSpeaking();
+          };
+          return (
+            <div className="flex flex-col gap-3">
+              <p className="hud-mono text-xs opacity-70">
+                {inLesson ? `CLASS ${li + 1}/${L.length}` : `PHRASE ${li - L.length + 1}/${screen.unit.cards.length}`}
+              </p>
+              {inLesson ? (
+                <div className="panel p-4 flex flex-col gap-3">
+                  <p className="text-xl font-bold">{L[li].title}</p>
+                  <p className="leading-relaxed">{L[li].body}</p>
+                  <div className="flex flex-col gap-2">
+                    {L[li].examples.map((e) => (
+                      <button key={e.fr} type="button" onClick={() => hear(e.fr)} className="hud-chip rounded px-3 py-2 text-left flex items-center gap-3">
+                        <span aria-hidden>🔊</span>
+                        <span className="flex-1">
+                          <b>{e.fr}</b> <span className="opacity-80">· {e.en}</span>
+                          <br />
+                          <span className="hud-mono text-xs">say: {e.say}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              );
-            })()}
-            <div className="flex gap-2">
-              {li > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLi(li - 1);
-                    hear(screen.unit.cards[li - 1].fr);
-                  }}
-                  className="touch-target hud-chip rounded px-4 font-bold"
-                >
-                  ‹
-                </button>
-              )}
-              {li < screen.unit.cards.length - 1 ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLi(li + 1);
-                    hear(screen.unit.cards[li + 1].fr);
-                  }}
-                  className="touch-target hud-cta px-6 font-bold flex-1"
-                >
-                  NEXT
-                </button>
               ) : (
-                <button type="button" onClick={() => openPractice(screen.unit, screen.unit.cards)} className="touch-target hud-cta px-6 font-bold flex-1">
-                  PRACTISE →
-                </button>
+                (() => {
+                  const c = screen.unit.cards[li - L.length];
+                  return (
+                    <div className="panel p-4 flex flex-col gap-3 text-center">
+                      <Picture emoji={c.emoji} />
+                      <p className="text-3xl font-bold">{c.fr}</p>
+                      <p className="hud-mono">say: {c.say}</p>
+                      <p className="text-lg">{c.en}</p>
+                      {c.tip && <p className="text-sm opacity-80">💡 {c.tip}</p>}
+                      <button type="button" onClick={() => hear(c.fr)} className="touch-target hud-chip rounded px-4 font-bold self-center">
+                        🔊 HEAR
+                      </button>
+                    </div>
+                  );
+                })()
               )}
+              <div className="flex gap-2">
+                {li > 0 && (
+                  <button type="button" onClick={() => go(li - 1)} className="touch-target hud-chip rounded px-4 font-bold">
+                    ‹
+                  </button>
+                )}
+                {li < lastIdx ? (
+                  <button type="button" onClick={() => go(li + 1)} className="touch-target hud-cta px-6 font-bold flex-1">
+                    NEXT
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => openPractice(screen.unit, screen.unit.cards)} className="touch-target hud-cta px-6 font-bold flex-1">
+                    PRACTISE →
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ---------------- PRACTICE ---------------- */}
         {screen.name === "practice" && (

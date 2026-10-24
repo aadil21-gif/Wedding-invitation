@@ -80,15 +80,17 @@ export function executeActions(actions: Action[]): ActionOutcome {
         });
         break;
       case "call":
-        out.links.push({ label: "CALL", sub: a.number, href: `tel:${a.number}` });
+        if (a.number) out.links.push({ label: "CALL", sub: a.number, href: `tel:${a.number}` });
         break;
-      case "whatsapp":
+      case "whatsapp": {
+        if (!a.number) break;
         out.links.push({
           label: "OPEN WHATSAPP",
           sub: `${a.number}${a.text ? ` · "${a.text.slice(0, 40)}"` : ""}`,
           href: `https://wa.me/${a.number.replace(/\D/g, "")}${a.text ? `?text=${encodeURIComponent(a.text)}` : ""}`,
         });
         break;
+      }
       case "music":
         out.links.push({
           label: "PLAY MUSIC",

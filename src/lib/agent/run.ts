@@ -12,7 +12,8 @@ const ACTION_HELP = `Device actions (put in "actions"; the phone performs them):
  {"type":"timer","seconds":300,"label":"tea"}
  {"type":"reminder","inSeconds":3600,"text":"call the pharmacy"}  or  {"type":"reminder","at":"17:30","text":"..."} (24h local time, today or next occurrence)
  {"type":"navigate","destination":"Centaurus Mall Islamabad","mode":"driving|walking|transit|bicycling"}
- {"type":"call","number":"+923001234567"}   {"type":"whatsapp","number":"+92...","text":"message"}
+ {"type":"call","number":"+923001234567"} or {"type":"call","name":"Ali"} (the phone looks the contact up)
+ {"type":"whatsapp","number":"+92...","text":"message"} or {"type":"whatsapp","name":"Ali","text":"message"}
  {"type":"music","query":"song or artist"}
  {"type":"note","text":"..."}   {"type":"list_add","list":"shopping","item":"milk"}
  {"type":"remember","fact":"short fact about the user to remember"}
@@ -56,12 +57,15 @@ function persona(kid: boolean, mode: Mode, lang: "en" | "ur", ctx: DeviceContext
       : "",
     ctx.notes.length ? `Recent notes: ${ctx.notes.join(" | ")}.` : "",
     ctx.timers.length ? `Running timers: ${ctx.timers.map((t) => `${t.label} (${t.secondsLeft}s left)`).join(", ")}.` : "",
+    ctx.notifications?.length ? `Recent phone notifications (newest first; read or summarise them when asked, never invent any): ${ctx.notifications.join(" | ")}.` : "",
+    ctx.usage?.length ? `Phone use today: ${ctx.usage.join(", ")}.` : "",
     ctx.reminders.length ? `Pending reminders: ${ctx.reminders.map((r) => `${r.text} at ${r.at}`).join(", ")}.` : "",
   ].filter(Boolean).join("\n");
 
   return [
     "You are SEEFAR, a voice assistant like Alexa crossed with a ship's computer, built for a low-vision user in Pakistan (PharmD, oncology pharma professional).",
     "Your words are read aloud: be brief and direct, lead with the answer, no markdown, no emoji, no filler or flattery. If unsure, say so. Never invent facts, numbers, phone numbers or place details.",
+    "You are his witty friend who also runs his life, not a help desk. After doing the task, you may add ONE short, funny or useful remark when it fits (a tease, a nudge, a fact). Never lecture, never ask whether he wants more help.",
     "If an image is attached it is what the user is looking right now. If text in it is unreadable, say exactly that; never invent text.",
     "Do things, do not just talk: use device actions for timers, reminders, directions, calls, notes, lists and memory. For a call or message, use the number the user gave; never guess one. Calls and messages are confirmed by the user tapping a button, so say you have prepared it.",
     "For health questions give general information only and say to confirm with a doctor or pharmacist when it affects a decision. Never give a personal dose.",
@@ -106,16 +110,21 @@ function pierrePersona(t: TutorOptions, lang: "en" | "ur") {
 
 export interface CallOptions {
   unitId: string;
+  /** Full help: Pierre tells the learner exactly what to say next. */
+  help: boolean;
   intensity: TutorOptions["intensity"];
 }
 
-function callPersona(unitId: string, intensity: TutorOptions["intensity"]) {
+function callPersona(unitId: string, intensity: TutorOptions["intensity"], help: boolean) {
   const u = unitOf(unitId);
   if (!u) return null;
   const m = u.mission;
   return [
     `You are playing ${m.role}, in ${m.setting}. You are also PIERRE, the learner's snobby-but-caring French teacher, listening in and coaching. The learner is Aadil, a complete beginner (A1) with a mission in this role-play.`,
     `MISSION GOALS (ids): ${m.goals.map((g) => `${g.id} = ${g.label}`).join("; ")}.`,
+    help
+      ? "The learner is a TOTAL beginner who has just finished the lesson. GUIDED MODE: in the en field, after the translation, ALWAYS add a line 'Say: <the exact French sentence for the next unfinished goal> (<English meaning>)' so he never has to guess. Praise correct tries in one word, roast wrong ones lightly, then tell him again what to say."
+      : "The learner has passed this unit before. LIGHT MODE: do not give the answer; give a hint only after a wrong or empty reply.",
     "Speak ONLY simple A1 French as your character: one or two short sentences, common words, present tense. Prefer words from this unit: " + u.cards.map((c) => c.fr).join(", ") + ". Move the scene towards the next unfinished goal, one thing at a time, and ask a question that invites the next goal.",
     "After each learner message, judge it: mark a goal in goals_done only if the learner really achieved it in French (accents and small spelling slips are fine). If they use English or are unclear, stay in French, simplify, and put the helpful French sentence in en as a hint. If their French has a mistake, fill fix with what they said, the correct version and one plain-English reason; otherwise fix is null.",
     INTENSITY_STYLE[intensity] + " Put the roast or hint in the en field after the translation, one short sentence. Aim only at the mistakes, never at the person. If the learner says stop or sounds upset, be kind.",
@@ -188,10 +197,14 @@ export function sanitizeActions(raw: unknown, kid: boolean): Action[] {
       if (destination) out.push({ type, destination, mode });
     } else if (type === "call") {
       const number = s(a.number, 20).replace(/[^\d+]/g, "");
+      const name = s(a.name, 60);
       if (/^\+?\d{6,15}$/.test(number)) out.push({ type, number });
+      else if (name) out.push({ type, name });
     } else if (type === "whatsapp") {
       const number = s(a.number, 20).replace(/[^\d+]/g, "");
+      const name = s(a.name, 60);
       if (/^\+?\d{6,15}$/.test(number)) out.push({ type, number, text: s(a.text, 500) });
+      else if (name) out.push({ type, name, text: s(a.text, 500) });
     } else if (type === "music") {
       const query = s(a.query, 120);
       if (query) out.push({ type, query });
@@ -233,7 +246,7 @@ export type AgentOutcome =
   | { ok: false; result: ChatResult };
 
 export async function runAgent(input: AgentInput): Promise<AgentOutcome> {
-  const callSystem = input.call ? callPersona(input.call.unitId, input.call.intensity) : null;
+  const callSystem = input.call ? callPersona(input.call.unitId, input.call.intensity, input.call.help) : null;
   const tools = input.tutor || callSystem ? [] : availableTools(input.kid);
   const messages: ChatMessage[] = [
     { role: "system", content: callSystem ?? (input.tutor ? pierrePersona(input.tutor, input.lang) : persona(input.kid, input.mode, input.lang, input.ctx, tools, input.character)) },

@@ -91,6 +91,8 @@ function cleanContext(raw: unknown): DeviceContext {
     notes: strList(c.notes, 8, 160),
     timers,
     reminders,
+    notifications: strList(c.notifications, 12, 200),
+    usage: strList(c.usage, 8, 60),
     robot,
   };
 }
@@ -118,7 +120,7 @@ export async function POST(request: NextRequest) {
   }
   const call =
     body?.tutor === "call" && !kid && typeof body?.unit === "string"
-      ? { unitId: body.unit as string, intensity }
+      ? { unitId: body.unit as string, intensity, help: body?.help !== false }
       : undefined;
   const tutor =
     body?.tutor === "fr" && !kid
