@@ -93,6 +93,7 @@ object Api {
 
     fun init(ctx: Context) {
         if (::http.isInitialized) return
+        cacheDir = java.io.File(ctx.applicationContext.filesDir, "tts").also { it.mkdirs() }
         jar = PersistentCookieJar(ctx.applicationContext)
         http = OkHttpClient.Builder()
             .cookieJar(jar)
@@ -187,17 +188,24 @@ object Api {
     }
 
     /** WAV bytes of the AI voice, or null when the server has no voice (the phone voice is used then). */
+    private var cacheDir: java.io.File? = null
+
     suspend fun tts(text: String, style: String): ByteArray? = withContext(Dispatchers.IO) {
+        val f = cacheDir?.let { java.io.File(it, "tts_" + (style + "|" + text).hashCode().toUInt().toString(16) + ".wav") }
+        if (f != null && f.exists() && f.length() > 100) return@withContext f.readBytes()
         try {
             val req = Request.Builder().url("$BASE/api/tts")
                 .post(JSONObject().put("text", text).put("style", style).toString().toRequestBody(JSON)).build()
             http.newCall(req).execute().use { r ->
-                if (!r.isSuccessful) null else r.body?.bytes()
+                if (!r.isSuccessful) null else r.body?.bytes()?.also { b -> if (f != null && b.size > 100) try { f.writeBytes(b) } catch (_: Exception) {} }
             }
         } catch (e: Exception) {
             null
         }
     }
+
+    /** Madame Roast: generate / write / talk / leech. */
+    suspend fun coach(body: JSONObject): JSONObject = JSONObject(post("/api/coach", body))
 
     suspend fun nudge(kind: String, usage: List<String>, image: String? = null, facts: List<String> = emptyList()): String {
         val o = JSONObject().put("kind", kind)

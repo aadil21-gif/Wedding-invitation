@@ -69,7 +69,7 @@ class Speaker(private val ctx: Context, private val scope: CoroutineScope) {
         return out.map { it.take(300) }
     }
 
-    fun speak(text: String, style: String = "natural", lang: String = "en", onStart: () -> Unit = {}, onDone: () -> Unit = {}) {
+    fun speak(text: String, style: String = "natural", lang: String = "en", onStart: () -> Unit = {}, onDone: () -> Unit = {}, forceAi: Boolean = false) {
         stop()
         val parts = chunks(text)
         if (parts.isEmpty()) { onStart(); onDone(); return }
@@ -78,11 +78,11 @@ class Speaker(private val ctx: Context, private val scope: CoroutineScope) {
             var cancelled = false
             val fire = { if (!started) { started = true; onStart() } }
             try {
-                val clips = if (mode == "phone") null else parts.map { p -> async(Dispatchers.IO) { Api.tts(p, style) } }
+                val clips = if (mode == "phone" && !forceAi) null else parts.map { p -> async(Dispatchers.IO) { Api.tts(p, style) } }
                 for ((i, p) in parts.withIndex()) {
                     val wav = when {
                         clips == null -> null
-                        i == 0 -> kotlinx.coroutines.withTimeoutOrNull(2200) { clips[0].await() }
+                        i == 0 -> kotlinx.coroutines.withTimeoutOrNull(if (forceAi) 5000L else 2200L) { clips[0].await() }
                         else -> clips[i].await()
                     }
                     if (wav != null && wav.size > 100) playWav(wav, fire) else speakPhone(p, lang, fire)

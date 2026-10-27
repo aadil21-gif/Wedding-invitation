@@ -1,0 +1,2230 @@
+{
+  "version": "1.0",
+  "course": "french_to_nclc7",
+  "goal": "TCF Canada, NCLC 7 in all four skills; exam window Jul-Aug 2027",
+  "start_date": "2026-10-28",
+  "timezone": "Asia/Karachi",
+  "daily_minutes": 180,
+  "daily_blocks": [
+    {
+      "id": "anki",
+      "minutes": 30,
+      "mode": "srs",
+      "rule": "15 new cards, reviews first"
+    },
+    {
+      "id": "lesson",
+      "minutes": 60,
+      "mode": "guided_drills"
+    },
+    {
+      "id": "listening",
+      "minutes": 45,
+      "mode": "external_audio_plus_in_app_dictation"
+    },
+    {
+      "id": "speaking",
+      "minutes": 30,
+      "mode": "voice_drills"
+    },
+    {
+      "id": "writing",
+      "minutes": 15,
+      "mode": "short_text_with_correction"
+    }
+  ],
+  "exercise_types": {
+    "say_it": "App speaks the target (TTS fr-FR), user repeats; pass = speech-recognition similarity >= 0.8. Approximate pronunciation check only.",
+    "fill": "Fill the blank; compare to answer or accept[], accent-strict.",
+    "translate_en_fr": "User answers in French (typed or spoken).",
+    "translate_fr_en": "User answers in English.",
+    "mcq": "One correct option.",
+    "order": "Arrange the words into the sentence.",
+    "dictation": "App speaks audio_text, user types it; accent-strict on the second attempt.",
+    "review_set": "App builds the set from the error log and due cards."
+  },
+  "days": [
+    {
+      "day": 1,
+      "week": 1,
+      "theme": "Sounds and alphabet",
+      "grammar": null,
+      "review_day": false,
+      "content_status": "full",
+      "lesson": {
+        "steps": [
+          "Learn the 26 letter names and the accents: é (accent aigu), è (accent grave), ê (circonflexe), à, ç (cédille).",
+          "Hear each letter name from TTS, repeat it, then spell your own name aloud.",
+          "Learn the 12 survival words below and say each one 3 times."
+        ],
+        "external": [
+          "https://apprendre.tv5monde.com/fr/exercices/a1-debutant",
+          "https://forvo.com/"
+        ]
+      },
+      "vocab": [
+        {
+          "fr": "bonjour",
+          "en": "hello / good day"
+        },
+        {
+          "fr": "salut",
+          "en": "hi (informal)"
+        },
+        {
+          "fr": "bonsoir",
+          "en": "good evening"
+        },
+        {
+          "fr": "au revoir",
+          "en": "goodbye"
+        },
+        {
+          "fr": "merci",
+          "en": "thank you"
+        },
+        {
+          "fr": "s'il vous plaît",
+          "en": "please (formal)"
+        },
+        {
+          "fr": "oui",
+          "en": "yes"
+        },
+        {
+          "fr": "non",
+          "en": "no"
+        },
+        {
+          "fr": "pardon",
+          "en": "sorry / pardon me"
+        },
+        {
+          "fr": "excusez-moi",
+          "en": "excuse me (formal)"
+        },
+        {
+          "fr": "ça va ?",
+          "en": "how's it going?"
+        },
+        {
+          "fr": "à demain",
+          "en": "see you tomorrow"
+        }
+      ],
+      "drills": [
+        {
+          "id": "d1-1",
+          "type": "say_it",
+          "target": "a, b, c, d, e, f, g",
+          "hint": "a, bé, cé, dé, eu, èf, jé"
+        },
+        {
+          "id": "d1-2",
+          "type": "say_it",
+          "target": "h, i, j, k, l, m, n",
+          "hint": "ash, i, ji, ka, èl, èm, èn"
+        },
+        {
+          "id": "d1-3",
+          "type": "say_it",
+          "target": "o, p, q, r, s, t, u, v, w, x, y, z",
+          "hint": "o, pé, ku, èr, ès, té, u, vé, double vé, iks, i grec, zèd"
+        },
+        {
+          "id": "d1-4",
+          "type": "say_it",
+          "target": "a, a, dé, i, èl",
+          "hint": "Spell AADIL in French letter names"
+        },
+        {
+          "id": "d1-5",
+          "type": "translate_en_fr",
+          "prompt": "thank you",
+          "answer": "merci"
+        },
+        {
+          "id": "d1-6",
+          "type": "translate_en_fr",
+          "prompt": "goodbye",
+          "answer": "au revoir"
+        },
+        {
+          "id": "d1-7",
+          "type": "translate_en_fr",
+          "prompt": "please (formal)",
+          "answer": "s'il vous plaît",
+          "accept": [
+            "s’il vous plaît",
+            "s'il vous plait"
+          ]
+        },
+        {
+          "id": "d1-8",
+          "type": "translate_fr_en",
+          "prompt": "bonsoir",
+          "answer": "good evening",
+          "accept": [
+            "good night",
+            "evening greeting"
+          ]
+        },
+        {
+          "id": "d1-9",
+          "type": "mcq",
+          "prompt": "What is the accent on é called?",
+          "options": [
+            "accent aigu",
+            "accent grave",
+            "cédille"
+          ],
+          "answer": "accent aigu"
+        },
+        {
+          "id": "d1-10",
+          "type": "mcq",
+          "prompt": "Which word do you use to say hi to a friend?",
+          "options": [
+            "bonsoir",
+            "salut",
+            "pardon"
+          ],
+          "answer": "salut"
+        }
+      ],
+      "listening": {
+        "external": [
+          "https://apprendre.tv5monde.com/fr/exercices/a1-debutant  (first 3 listening exercises, twice each)"
+        ],
+        "in_app_dictation": [
+          {
+            "spelled": "b, o, n, j, o, u, r",
+            "answer": "bonjour"
+          },
+          {
+            "spelled": "m, e, r, c, i",
+            "answer": "merci"
+          },
+          {
+            "spelled": "s, a, l, u, t",
+            "answer": "salut"
+          }
+        ]
+      },
+      "speaking": [
+        {
+          "prompt": "Say the alphabet slowly, then spell your name and your city.",
+          "criteria": "All 26 letter names; e, g, i, j in French, not English"
+        },
+        {
+          "prompt": "Record yourself reading the alphabet and 10 of today's words. Saved for the Day 7 comparison.",
+          "criteria": "Recording stored locally as baseline_day1"
+        }
+      ],
+      "writing": {
+        "prompt": "Write 5 nouns with le, la, un or une. The app supplies the gender: le livre, la table, une pharmacie, un stylo, le café.",
+        "min_sentences": 5,
+        "must_use": [
+          "le",
+          "la",
+          "un",
+          "une"
+        ]
+      },
+      "date": "2026-10-28"
+    },
+    {
+      "day": 2,
+      "week": 1,
+      "theme": "Nasal vowels, silent letters, liaison",
+      "grammar": null,
+      "review_day": false,
+      "content_status": "full",
+      "lesson": {
+        "steps": [
+          "Four nasal sounds: an/en (dans), on (bon), in/ain (pain, vin), un. The n is not pronounced as a separate sound.",
+          "Final consonants are usually silent: petit, dans, vous, grand.",
+          "Liaison: a silent final consonant links to a following vowel: les amis, vous avez, un ami."
+        ],
+        "external": [
+          "https://forvo.com/",
+          "https://www.youtube.com/results?search_query=Comme+une+Fran%C3%A7aise+prononciation"
+        ]
+      },
+      "vocab": [
+        {
+          "fr": "dans",
+          "en": "in"
+        },
+        {
+          "fr": "blanc / blanche",
+          "en": "white"
+        },
+        {
+          "fr": "bon / bonne",
+          "en": "good"
+        },
+        {
+          "fr": "la maison",
+          "en": "the house"
+        },
+        {
+          "fr": "le pain",
+          "en": "the bread"
+        },
+        {
+          "fr": "le vin",
+          "en": "the wine"
+        },
+        {
+          "fr": "le matin",
+          "en": "the morning"
+        },
+        {
+          "fr": "un",
+          "en": "one / a (masculine)"
+        },
+        {
+          "fr": "un enfant",
+          "en": "a child"
+        },
+        {
+          "fr": "content / contente",
+          "en": "happy"
+        },
+        {
+          "fr": "la chambre",
+          "en": "the bedroom"
+        },
+        {
+          "fr": "lundi",
+          "en": "Monday"
+        }
+      ],
+      "drills": [
+        {
+          "id": "d2-1",
+          "type": "say_it",
+          "target": "bon, banc, bain",
+          "hint": "three different nasal vowels: on, an, in"
+        },
+        {
+          "id": "d2-2",
+          "type": "say_it",
+          "target": "vingt, vent, vont",
+          "hint": "in, an, on"
+        },
+        {
+          "id": "d2-3",
+          "type": "say_it",
+          "target": "les amis",
+          "hint": "liaison: lé-z-ami"
+        },
+        {
+          "id": "d2-4",
+          "type": "say_it",
+          "target": "vous avez",
+          "hint": "liaison: vou-z-avé"
+        },
+        {
+          "id": "d2-5",
+          "type": "say_it",
+          "target": "Le pain est bon."
+        },
+        {
+          "id": "d2-6",
+          "type": "say_it",
+          "target": "Elle est dans la maison."
+        },
+        {
+          "id": "d2-7",
+          "type": "mcq",
+          "prompt": "Is the final s of 'dans' pronounced?",
+          "options": [
+            "yes",
+            "no"
+          ],
+          "answer": "no"
+        },
+        {
+          "id": "d2-8",
+          "type": "mcq",
+          "prompt": "Which word has the on nasal sound?",
+          "options": [
+            "bon",
+            "banc",
+            "bain"
+          ],
+          "answer": "bon"
+        },
+        {
+          "id": "d2-9",
+          "type": "translate_en_fr",
+          "prompt": "the bread is good",
+          "answer": "le pain est bon"
+        },
+        {
+          "id": "d2-10",
+          "type": "dictation",
+          "audio_text": "Bonjour, les amis.",
+          "answer": "Bonjour, les amis."
+        }
+      ],
+      "listening": {
+        "external": [
+          "https://www.youtube.com/@EasyFrench  (one beginner episode, French subtitles on, then off)"
+        ],
+        "in_app_dictation": [
+          {
+            "audio_text": "Le pain est bon.",
+            "answer": "Le pain est bon."
+          },
+          {
+            "audio_text": "Elle est dans la maison.",
+            "answer": "Elle est dans la maison."
+          },
+          {
+            "audio_text": "Bonsoir, les amis.",
+            "answer": "Bonsoir, les amis."
+          }
+        ]
+      },
+      "speaking": [
+        {
+          "prompt": "Shadow 15 vocab words with TTS audio, 3 times each.",
+          "criteria": "Nasal vowels not pronounced as n or m"
+        },
+        {
+          "prompt": "Say three times each: Bonjour, les amis. Le pain est bon. Elle est dans la maison.",
+          "criteria": "Liaison in 'les amis'"
+        }
+      ],
+      "writing": {
+        "prompt": "Copy 5 greetings you know: bonjour, bonsoir, salut, au revoir, à demain. Add an accent mark check.",
+        "min_sentences": 5,
+        "must_use": []
+      },
+      "date": "2026-10-29"
+    },
+    {
+      "day": 3,
+      "week": 1,
+      "theme": "Greetings and introducing yourself",
+      "grammar": "je m'appelle, je suis, j'habite à, j'ai ... ans",
+      "review_day": false,
+      "content_status": "full",
+      "profile_placeholders": [
+        "first_name",
+        "city",
+        "age",
+        "profession"
+      ],
+      "lesson": {
+        "steps": [
+          "Learn the introduction frame: Bonjour, je m'appelle [name]. J'habite à [city]. J'ai [age] ans. Je suis [profession].",
+          "Practise the formal exchange: Comment allez-vous ? Très bien, merci. Et vous ?",
+          "Say your own introduction 5 times, then record 30 seconds."
+        ],
+        "external": [
+          "https://apprendre.tv5monde.com/fr/exercices/a1-debutant  (topic: se présenter)",
+          "https://www.lepointdufle.net/"
+        ]
+      },
+      "vocab": [
+        {
+          "fr": "je m'appelle",
+          "en": "my name is"
+        },
+        {
+          "fr": "comment vous appelez-vous ?",
+          "en": "what is your name? (formal)"
+        },
+        {
+          "fr": "enchanté / enchantée",
+          "en": "pleased to meet you (m / f)"
+        },
+        {
+          "fr": "j'habite à",
+          "en": "I live in"
+        },
+        {
+          "fr": "j'ai ... ans",
+          "en": "I am ... years old"
+        },
+        {
+          "fr": "je suis",
+          "en": "I am"
+        },
+        {
+          "fr": "pharmacien / pharmacienne",
+          "en": "pharmacist (m / f)"
+        },
+        {
+          "fr": "comment allez-vous ?",
+          "en": "how are you? (formal)"
+        },
+        {
+          "fr": "très bien, merci",
+          "en": "very well, thank you"
+        },
+        {
+          "fr": "et vous ?",
+          "en": "and you? (formal)"
+        },
+        {
+          "fr": "je travaille comme",
+          "en": "I work as"
+        },
+        {
+          "fr": "l'oncologie (f)",
+          "en": "oncology"
+        }
+      ],
+      "drills": [
+        {
+          "id": "d3-1",
+          "type": "fill",
+          "prompt": "Je ___ Aadil.",
+          "answer": "m'appelle",
+          "accept": [
+            "m’appelle"
+          ]
+        },
+        {
+          "id": "d3-2",
+          "type": "fill",
+          "prompt": "J'___ à Islamabad.",
+          "answer": "habite"
+        },
+        {
+          "id": "d3-3",
+          "type": "fill",
+          "prompt": "J'ai vingt-huit ___.",
+          "answer": "ans"
+        },
+        {
+          "id": "d3-4",
+          "type": "fill",
+          "prompt": "Je ___ pharmacien.",
+          "answer": "suis"
+        },
+        {
+          "id": "d3-5",
+          "type": "translate_en_fr",
+          "prompt": "I am a pharmacist.",
+          "answer": "je suis pharmacien",
+          "accept": [
+            "je suis pharmacienne"
+          ]
+        },
+        {
+          "id": "d3-6",
+          "type": "translate_en_fr",
+          "prompt": "How are you? (formal)",
+          "answer": "comment allez-vous",
+          "accept": [
+            "comment allez-vous ?"
+          ]
+        },
+        {
+          "id": "d3-7",
+          "type": "translate_en_fr",
+          "prompt": "Pleased to meet you.",
+          "answer": "enchanté",
+          "accept": [
+            "enchantée"
+          ]
+        },
+        {
+          "id": "d3-8",
+          "type": "order",
+          "words": [
+            "habite",
+            "j'",
+            "Islamabad",
+            "à"
+          ],
+          "answer": "J'habite à Islamabad."
+        },
+        {
+          "id": "d3-9",
+          "type": "mcq",
+          "prompt": "Which means 'I work as'?",
+          "options": [
+            "je travaille comme",
+            "j'habite à",
+            "je m'appelle"
+          ],
+          "answer": "je travaille comme"
+        },
+        {
+          "id": "d3-10",
+          "type": "say_it",
+          "target": "Bonjour, je m'appelle Aadil. J'habite à Islamabad. J'ai vingt-huit ans. Je suis pharmacien.",
+          "hint": "App substitutes name, city, age and profession from the user profile after the user confirms them"
+        }
+      ],
+      "listening": {
+        "external": [
+          "https://apprendre.tv5monde.com/fr/exercices/a1-debutant  (3 introduction audios)"
+        ],
+        "in_app_dictation": [
+          {
+            "audio_text": "Je m'appelle Sara.",
+            "answer": "Je m'appelle Sara."
+          },
+          {
+            "audio_text": "J'habite à Lahore.",
+            "answer": "J'habite à Lahore."
+          },
+          {
+            "audio_text": "Comment allez-vous ?",
+            "answer": "Comment allez-vous ?"
+          }
+        ]
+      },
+      "speaking": [
+        {
+          "prompt": "Say your introduction 5 times, then record 30 seconds.",
+          "criteria": "4 sentences, no pauses over 3 seconds"
+        }
+      ],
+      "writing": {
+        "prompt": "Write a 4-sentence self-introduction using the frame.",
+        "min_sentences": 4,
+        "must_use": [
+          "je m'appelle",
+          "j'habite à",
+          "j'ai",
+          "je suis"
+        ]
+      },
+      "date": "2026-10-30"
+    },
+    {
+      "day": 4,
+      "week": 1,
+      "theme": "Être and avoir; subject pronouns",
+      "grammar": "être, avoir (present)",
+      "review_day": false,
+      "content_status": "full",
+      "lesson": {
+        "steps": [
+          "Pronouns: je, tu, il, elle, nous, vous, ils, elles.",
+          "être: je suis, tu es, il/elle est, nous sommes, vous êtes, ils/elles sont.",
+          "avoir: j'ai, tu as, il/elle a, nous avons, vous avez, ils/elles ont.",
+          "Expressions with avoir: j'ai faim (I am hungry), j'ai soif (I am thirsty)."
+        ],
+        "external": [
+          "https://www.lepointdufle.net/  (exercises: le verbe être, le verbe avoir)"
+        ]
+      },
+      "vocab": [
+        {
+          "fr": "fatigué / fatiguée",
+          "en": "tired"
+        },
+        {
+          "fr": "occupé / occupée",
+          "en": "busy"
+        },
+        {
+          "fr": "prêt / prête",
+          "en": "ready"
+        },
+        {
+          "fr": "content / contente",
+          "en": "happy"
+        },
+        {
+          "fr": "un frère",
+          "en": "a brother"
+        },
+        {
+          "fr": "une sœur",
+          "en": "a sister"
+        },
+        {
+          "fr": "un collègue / une collègue",
+          "en": "a colleague"
+        },
+        {
+          "fr": "un téléphone",
+          "en": "a phone"
+        },
+        {
+          "fr": "une voiture",
+          "en": "a car"
+        },
+        {
+          "fr": "j'ai faim",
+          "en": "I am hungry"
+        },
+        {
+          "fr": "j'ai soif",
+          "en": "I am thirsty"
+        },
+        {
+          "fr": "ils / elles",
+          "en": "they (m / f)"
+        }
+      ],
+      "drills": [
+        {
+          "id": "d4-1",
+          "type": "fill",
+          "prompt": "Je ___ fatigué.",
+          "answer": "suis"
+        },
+        {
+          "id": "d4-2",
+          "type": "fill",
+          "prompt": "Tu ___ occupé.",
+          "answer": "es"
+        },
+        {
+          "id": "d4-3",
+          "type": "fill",
+          "prompt": "Elle ___ pharmacienne.",
+          "answer": "est"
+        },
+        {
+          "id": "d4-4",
+          "type": "fill",
+          "prompt": "Nous ___ prêts.",
+          "answer": "sommes"
+        },
+        {
+          "id": "d4-5",
+          "type": "fill",
+          "prompt": "Vous ___ contents.",
+          "answer": "êtes"
+        },
+        {
+          "id": "d4-6",
+          "type": "fill",
+          "prompt": "Ils ___ des collègues.",
+          "answer": "sont"
+        },
+        {
+          "id": "d4-7",
+          "type": "fill",
+          "prompt": "J'___ un téléphone.",
+          "answer": "ai"
+        },
+        {
+          "id": "d4-8",
+          "type": "fill",
+          "prompt": "Tu ___ faim.",
+          "answer": "as"
+        },
+        {
+          "id": "d4-9",
+          "type": "fill",
+          "prompt": "Il ___ une sœur.",
+          "answer": "a"
+        },
+        {
+          "id": "d4-10",
+          "type": "fill",
+          "prompt": "Nous ___ une voiture.",
+          "answer": "avons"
+        },
+        {
+          "id": "d4-11",
+          "type": "fill",
+          "prompt": "Vous ___ soif.",
+          "answer": "avez"
+        },
+        {
+          "id": "d4-12",
+          "type": "fill",
+          "prompt": "Ils ___ une voiture.",
+          "answer": "ont"
+        },
+        {
+          "id": "d4-13",
+          "type": "translate_en_fr",
+          "prompt": "I am busy.",
+          "answer": "je suis occupé",
+          "accept": [
+            "je suis occupée"
+          ]
+        },
+        {
+          "id": "d4-14",
+          "type": "translate_en_fr",
+          "prompt": "We have a car.",
+          "answer": "nous avons une voiture"
+        }
+      ],
+      "listening": {
+        "external": [
+          "https://www.youtube.com/@EasyFrench  (one episode), then https://apprendre.tv5monde.com/fr/exercices/a1-debutant"
+        ],
+        "in_app_dictation": [
+          {
+            "audio_text": "Nous sommes prêts.",
+            "answer": "Nous sommes prêts."
+          },
+          {
+            "audio_text": "Elle a une sœur.",
+            "answer": "Elle a une sœur."
+          },
+          {
+            "audio_text": "Vous avez faim ?",
+            "answer": "Vous avez faim ?"
+          }
+        ]
+      },
+      "speaking": [
+        {
+          "prompt": "Shadow all 12 conjugated forms of être and avoir, then say 5 sentences about yourself.",
+          "criteria": "No English pronouns; correct liaison in vous avez, ils ont, nous avons"
+        }
+      ],
+      "writing": {
+        "prompt": "Write 5 sentences using être and avoir.",
+        "min_sentences": 5,
+        "must_use": [
+          "suis",
+          "ai"
+        ]
+      },
+      "date": "2026-10-31"
+    },
+    {
+      "day": 5,
+      "week": 1,
+      "theme": "Numbers 0 to 100, age, phone numbers",
+      "grammar": "numbers",
+      "review_day": false,
+      "content_status": "full",
+      "lesson": {
+        "steps": [
+          "0 to 20: zéro, un, deux, trois, quatre, cinq, six, sept, huit, neuf, dix, onze, douze, treize, quatorze, quinze, seize, dix-sept, dix-huit, dix-neuf, vingt.",
+          "Tens: trente, quarante, cinquante, soixante. Then 70 = soixante-dix, 80 = quatre-vingts, 90 = quatre-vingt-dix, 100 = cent.",
+          "'et un' rule: 21, 31, 41, 51, 61 use 'et un' (vingt et un). 71 = soixante et onze. 81 and 91 do NOT use 'et': quatre-vingt-un, quatre-vingt-onze."
+        ],
+        "external": [
+          "https://apprendre.tv5monde.com/fr/exercices/a1-debutant  (numbers exercises)"
+        ]
+      },
+      "vocab": [
+        {
+          "fr": "zéro",
+          "en": "0"
+        },
+        {
+          "fr": "sept",
+          "en": "7"
+        },
+        {
+          "fr": "onze",
+          "en": "11"
+        },
+        {
+          "fr": "seize",
+          "en": "16"
+        },
+        {
+          "fr": "vingt",
+          "en": "20"
+        },
+        {
+          "fr": "vingt et un",
+          "en": "21"
+        },
+        {
+          "fr": "trente",
+          "en": "30"
+        },
+        {
+          "fr": "quarante",
+          "en": "40"
+        },
+        {
+          "fr": "cinquante",
+          "en": "50"
+        },
+        {
+          "fr": "soixante",
+          "en": "60"
+        },
+        {
+          "fr": "soixante-dix",
+          "en": "70"
+        },
+        {
+          "fr": "quatre-vingts",
+          "en": "80"
+        },
+        {
+          "fr": "quatre-vingt-dix",
+          "en": "90"
+        },
+        {
+          "fr": "cent",
+          "en": "100"
+        }
+      ],
+      "drills": [
+        {
+          "id": "d5-1",
+          "type": "say_it",
+          "target": "zéro, un, deux, trois, quatre, cinq, six, sept, huit, neuf, dix"
+        },
+        {
+          "id": "d5-2",
+          "type": "say_it",
+          "target": "onze, douze, treize, quatorze, quinze, seize, dix-sept, dix-huit, dix-neuf, vingt"
+        },
+        {
+          "id": "d5-3",
+          "type": "say_it",
+          "target": "trente, quarante, cinquante, soixante, soixante-dix, quatre-vingts, quatre-vingt-dix, cent"
+        },
+        {
+          "id": "d5-4",
+          "type": "translate_fr_en",
+          "prompt": "vingt-huit",
+          "answer": "28"
+        },
+        {
+          "id": "d5-5",
+          "type": "translate_fr_en",
+          "prompt": "soixante et onze",
+          "answer": "71"
+        },
+        {
+          "id": "d5-6",
+          "type": "translate_fr_en",
+          "prompt": "quatre-vingt-treize",
+          "answer": "93"
+        },
+        {
+          "id": "d5-7",
+          "type": "translate_en_fr",
+          "prompt": "17",
+          "answer": "dix-sept"
+        },
+        {
+          "id": "d5-8",
+          "type": "translate_en_fr",
+          "prompt": "45",
+          "answer": "quarante-cinq"
+        },
+        {
+          "id": "d5-9",
+          "type": "translate_en_fr",
+          "prompt": "86",
+          "answer": "quatre-vingt-six"
+        },
+        {
+          "id": "d5-10",
+          "type": "translate_en_fr",
+          "prompt": "21",
+          "answer": "vingt et un"
+        },
+        {
+          "id": "d5-11",
+          "type": "translate_en_fr",
+          "prompt": "81",
+          "answer": "quatre-vingt-un"
+        },
+        {
+          "id": "d5-12",
+          "type": "mcq",
+          "prompt": "Which is 80?",
+          "options": [
+            "soixante-dix",
+            "quatre-vingts",
+            "quarante"
+          ],
+          "answer": "quatre-vingts"
+        }
+      ],
+      "listening": {
+        "external": [
+          "https://www.youtube.com/results?search_query=French+numbers+dictation"
+        ],
+        "in_app_dictation": [
+          {
+            "audio_text": "dix-sept",
+            "answer": "17"
+          },
+          {
+            "audio_text": "quarante-cinq",
+            "answer": "45"
+          },
+          {
+            "audio_text": "soixante et onze",
+            "answer": "71"
+          },
+          {
+            "audio_text": "quatre-vingt-six",
+            "answer": "86"
+          },
+          {
+            "audio_text": "quatre-vingt-treize",
+            "answer": "93"
+          },
+          {
+            "audio_text": "cent",
+            "answer": "100"
+          }
+        ]
+      },
+      "speaking": [
+        {
+          "prompt": "Say your phone number, your birth date and your age aloud in French.",
+          "criteria": "Digits in pairs for the phone number; the app takes the values from the user at runtime and does not store them"
+        }
+      ],
+      "writing": {
+        "prompt": "Write 10 numbers in words (the app picks numbers between 1 and 100).",
+        "min_sentences": 10,
+        "must_use": []
+      },
+      "date": "2026-11-01"
+    },
+    {
+      "day": 6,
+      "week": 1,
+      "theme": "Nouns, gender, articles",
+      "grammar": "le/la/l'/les, un/une/des",
+      "review_day": false,
+      "content_status": "full",
+      "lesson": {
+        "steps": [
+          "Every noun is masculine or feminine; learn each noun with its article.",
+          "Definite: le (m), la (f), l' before a vowel or silent h, les (plural).",
+          "Indefinite: un (m), une (f), des (plural).",
+          "Learn the 30 nouns below with their article."
+        ],
+        "external": [
+          "https://www.lepointdufle.net/  (exercises: les articles)"
+        ]
+      },
+      "vocab": [
+        {
+          "fr": "le livre",
+          "en": "the book"
+        },
+        {
+          "fr": "la table",
+          "en": "the table"
+        },
+        {
+          "fr": "la chaise",
+          "en": "the chair"
+        },
+        {
+          "fr": "le stylo",
+          "en": "the pen"
+        },
+        {
+          "fr": "le sac",
+          "en": "the bag"
+        },
+        {
+          "fr": "la clé",
+          "en": "the key"
+        },
+        {
+          "fr": "la porte",
+          "en": "the door"
+        },
+        {
+          "fr": "la fenêtre",
+          "en": "the window"
+        },
+        {
+          "fr": "le téléphone",
+          "en": "the phone"
+        },
+        {
+          "fr": "l'ordinateur (m)",
+          "en": "the computer"
+        },
+        {
+          "fr": "la lampe",
+          "en": "the lamp"
+        },
+        {
+          "fr": "le lit",
+          "en": "the bed"
+        },
+        {
+          "fr": "la maison",
+          "en": "the house"
+        },
+        {
+          "fr": "la voiture",
+          "en": "the car"
+        },
+        {
+          "fr": "le café",
+          "en": "the coffee"
+        },
+        {
+          "fr": "le thé",
+          "en": "the tea"
+        },
+        {
+          "fr": "l'eau (f)",
+          "en": "the water"
+        },
+        {
+          "fr": "le pain",
+          "en": "the bread"
+        },
+        {
+          "fr": "le médicament",
+          "en": "the medicine"
+        },
+        {
+          "fr": "la pharmacie",
+          "en": "the pharmacy"
+        },
+        {
+          "fr": "l'ordonnance (f)",
+          "en": "the prescription"
+        },
+        {
+          "fr": "la boîte",
+          "en": "the box"
+        },
+        {
+          "fr": "le comprimé",
+          "en": "the tablet"
+        },
+        {
+          "fr": "le sirop",
+          "en": "the syrup"
+        },
+        {
+          "fr": "la douleur",
+          "en": "the pain"
+        },
+        {
+          "fr": "le médecin",
+          "en": "the doctor"
+        },
+        {
+          "fr": "l'hôpital (m)",
+          "en": "the hospital"
+        },
+        {
+          "fr": "le patient",
+          "en": "the patient (m)"
+        },
+        {
+          "fr": "la patiente",
+          "en": "the patient (f)"
+        },
+        {
+          "fr": "le bureau",
+          "en": "the office / desk"
+        }
+      ],
+      "drills": [
+        {
+          "id": "d6-1",
+          "type": "fill",
+          "prompt": "___ livre",
+          "answer": "le"
+        },
+        {
+          "id": "d6-2",
+          "type": "fill",
+          "prompt": "___ table",
+          "answer": "la"
+        },
+        {
+          "id": "d6-3",
+          "type": "fill",
+          "prompt": "___ ordinateur",
+          "answer": "l'",
+          "accept": [
+            "l’"
+          ]
+        },
+        {
+          "id": "d6-4",
+          "type": "fill",
+          "prompt": "___ eau",
+          "answer": "l'",
+          "accept": [
+            "l’"
+          ]
+        },
+        {
+          "id": "d6-5",
+          "type": "fill",
+          "prompt": "___ pharmacie",
+          "answer": "la"
+        },
+        {
+          "id": "d6-6",
+          "type": "fill",
+          "prompt": "___ ordonnance",
+          "answer": "l'",
+          "accept": [
+            "l’"
+          ]
+        },
+        {
+          "id": "d6-7",
+          "type": "fill",
+          "prompt": "___ médicament",
+          "answer": "le"
+        },
+        {
+          "id": "d6-8",
+          "type": "fill",
+          "prompt": "___ hôpital",
+          "answer": "l'",
+          "accept": [
+            "l’"
+          ]
+        },
+        {
+          "id": "d6-9",
+          "type": "fill",
+          "prompt": "___ stylo (a)",
+          "answer": "un"
+        },
+        {
+          "id": "d6-10",
+          "type": "fill",
+          "prompt": "___ voiture (a)",
+          "answer": "une"
+        },
+        {
+          "id": "d6-11",
+          "type": "fill",
+          "prompt": "___ clé (a)",
+          "answer": "une"
+        },
+        {
+          "id": "d6-12",
+          "type": "fill",
+          "prompt": "___ lit (a)",
+          "answer": "un"
+        },
+        {
+          "id": "d6-13",
+          "type": "translate_en_fr",
+          "prompt": "the key",
+          "answer": "la clé"
+        },
+        {
+          "id": "d6-14",
+          "type": "translate_en_fr",
+          "prompt": "a bed",
+          "answer": "un lit"
+        },
+        {
+          "id": "d6-15",
+          "type": "translate_en_fr",
+          "prompt": "the medicine",
+          "answer": "le médicament"
+        },
+        {
+          "id": "d6-16",
+          "type": "translate_en_fr",
+          "prompt": "the books",
+          "answer": "les livres"
+        }
+      ],
+      "listening": {
+        "external": [
+          "https://www.youtube.com/@EasyFrench  (one episode)"
+        ],
+        "in_app_dictation": [
+          {
+            "audio_text": "C'est un stylo.",
+            "answer": "C'est un stylo."
+          },
+          {
+            "audio_text": "Il y a une clé sur la table.",
+            "answer": "Il y a une clé sur la table."
+          },
+          {
+            "audio_text": "Le médicament est dans la boîte.",
+            "answer": "Le médicament est dans la boîte."
+          }
+        ]
+      },
+      "speaking": [
+        {
+          "prompt": "Point the camera at 10 objects. Name each one aloud: C'est un ... / C'est une ...",
+          "criteria": "Camera-based: the app recognises the object, the user supplies the French name with the right article"
+        }
+      ],
+      "writing": {
+        "prompt": "Write 6 sentences starting 'Il y a ...' (there is / there are).",
+        "min_sentences": 6,
+        "must_use": [
+          "il y a"
+        ]
+      },
+      "date": "2026-11-02"
+    },
+    {
+      "day": 7,
+      "week": 1,
+      "theme": "Week 1 review",
+      "grammar": null,
+      "review_day": true,
+      "content_status": "full",
+      "lesson": {
+        "steps": [
+          "Redo every item you missed this week (the app selects them from the error log).",
+          "Compare your Day 1 recording with a new 1-minute introduction.",
+          "Scorecard: send the weekly scorecard to the user (hours, cards, error types)."
+        ],
+        "external": [
+          "https://apprendre.tv5monde.com/fr/exercices/a1-debutant",
+          "https://www.lepointdufle.net/"
+        ]
+      },
+      "vocab": [],
+      "drills": [
+        {
+          "id": "d7-review",
+          "type": "review_set",
+          "source": "error_log",
+          "days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ],
+          "count": 20
+        },
+        {
+          "id": "d7-1",
+          "type": "fill",
+          "prompt": "Je ___ pharmacien.",
+          "answer": "suis"
+        },
+        {
+          "id": "d7-2",
+          "type": "fill",
+          "prompt": "Nous ___ une voiture.",
+          "answer": "avons"
+        },
+        {
+          "id": "d7-3",
+          "type": "fill",
+          "prompt": "___ eau",
+          "answer": "l'",
+          "accept": [
+            "l’"
+          ]
+        },
+        {
+          "id": "d7-4",
+          "type": "translate_en_fr",
+          "prompt": "I live in Islamabad.",
+          "answer": "j'habite à Islamabad",
+          "accept": [
+            "j’habite à Islamabad"
+          ]
+        },
+        {
+          "id": "d7-5",
+          "type": "translate_en_fr",
+          "prompt": "93",
+          "answer": "quatre-vingt-treize"
+        },
+        {
+          "id": "d7-6",
+          "type": "say_it",
+          "target": "Bonjour, je m'appelle Aadil. J'habite à Islamabad. J'ai vingt-huit ans. Je suis pharmacien."
+        }
+      ],
+      "listening": {
+        "external": [
+          "Replay Day 1 and Day 3 audio with no text"
+        ],
+        "in_app_dictation": []
+      },
+      "speaking": [
+        {
+          "prompt": "Record a new 1-minute introduction and play it back next to the Day 1 recording.",
+          "criteria": "Uses at least 8 new words; fewer than 3 English words"
+        }
+      ],
+      "writing": {
+        "prompt": "Rewrite your Day 3 introduction with all corrections.",
+        "min_sentences": 4,
+        "must_use": []
+      },
+      "date": "2026-11-03"
+    },
+    {
+      "day": 8,
+      "week": 2,
+      "theme": "Regular -er verbs (present)",
+      "grammar": "parler, habiter, travailler, aimer, étudier",
+      "review_day": false,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "TV5 x3 + EF daily life"
+      },
+      "speaking": [
+        {
+          "prompt": "Conjugate 5 verbs aloud with every pronoun"
+        }
+      ],
+      "writing": {
+        "prompt": "6 sentences about your work"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-04"
+    },
+    {
+      "day": 9,
+      "week": 2,
+      "theme": "Negation and yes/no questions",
+      "grammar": "ne ... pas; est-ce que; intonation",
+      "review_day": false,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "TV5 x3"
+      },
+      "speaking": [
+        {
+          "prompt": "HelloTalk: 2 voice messages introducing yourself"
+        }
+      ],
+      "writing": {
+        "prompt": "4 negative sentences, 4 questions"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-05"
+    },
+    {
+      "day": 10,
+      "week": 2,
+      "theme": "Question words",
+      "grammar": "qui, où, quand, comment, pourquoi, combien",
+      "review_day": false,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "EF street interview, first 5 minutes"
+      },
+      "speaking": [
+        {
+          "prompt": "Ask an exchange partner 5 questions aloud"
+        }
+      ],
+      "writing": {
+        "prompt": "8 questions for a new colleague"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-06"
+    },
+    {
+      "day": 11,
+      "week": 2,
+      "theme": "Family and possessives",
+      "grammar": "mon/ma/mes, ton/ta/tes, son/sa/ses",
+      "review_day": false,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "TV5 family audio, twice"
+      },
+      "speaking": [
+        {
+          "prompt": "Describe your family for 1 minute"
+        }
+      ],
+      "writing": {
+        "prompt": "6 sentences about your family"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-07"
+    },
+    {
+      "day": 12,
+      "week": 2,
+      "theme": "Time, days, months, dates",
+      "grammar": "il est ... heures; les jours; les mois",
+      "review_day": false,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "TV5 x3 + EF"
+      },
+      "speaking": [
+        {
+          "prompt": "Say today's date and your weekly schedule"
+        }
+      ],
+      "writing": {
+        "prompt": "Tomorrow's schedule in 6 sentences"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-08"
+    },
+    {
+      "day": 13,
+      "week": 2,
+      "theme": "Daily routine; aller + à/au/en",
+      "grammar": "aller; à la, au, en",
+      "review_day": false,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "EF daily routine episode"
+      },
+      "speaking": [
+        {
+          "prompt": "HelloTalk voice exchange, 10 minutes"
+        }
+      ],
+      "writing": {
+        "prompt": "6-sentence paragraph on your usual day"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-09"
+    },
+    {
+      "day": 14,
+      "week": 2,
+      "theme": "Week 2 review",
+      "grammar": "review",
+      "review_day": true,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "Replay Day 8 and Day 10 audio, no text"
+      },
+      "speaking": [
+        {
+          "prompt": "Record 90 seconds on family and job"
+        }
+      ],
+      "writing": {
+        "prompt": "Rewrite your Day 13 paragraph"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-10"
+    },
+    {
+      "day": 15,
+      "week": 3,
+      "theme": "Aller and faire; weather and activities",
+      "grammar": "aller, faire",
+      "review_day": false,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "RFI with transcript, then TV5"
+      },
+      "speaking": [
+        {
+          "prompt": "HelloTalk exchange, 15 minutes"
+        }
+      ],
+      "writing": {
+        "prompt": "6 sentences about weekend activities"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-11"
+    },
+    {
+      "day": 16,
+      "week": 3,
+      "theme": "Vouloir, pouvoir, devoir; polite requests",
+      "grammar": "je voudrais, je peux, je dois",
+      "review_day": false,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "RFI + EF"
+      },
+      "speaking": [
+        {
+          "prompt": "Record 6 polite requests aloud"
+        }
+      ],
+      "writing": {
+        "prompt": "The same 6 requests in writing"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "day": 17,
+      "week": 3,
+      "theme": "Food and partitive articles",
+      "grammar": "du, de la, de l', des",
+      "review_day": false,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "EF restaurant episode"
+      },
+      "speaking": [
+        {
+          "prompt": "Order a meal on a call or voice message"
+        }
+      ],
+      "writing": {
+        "prompt": "Your day's meals in 8 sentences"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-13"
+    },
+    {
+      "day": 18,
+      "week": 3,
+      "theme": "Adjectives: agreement and position",
+      "grammar": "feminine, plural, position",
+      "review_day": false,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "RFI + TV5"
+      },
+      "speaking": [
+        {
+          "prompt": "Describe 3 people for 1 minute each"
+        }
+      ],
+      "writing": {
+        "prompt": "8 sentences describing a colleague"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-14"
+    },
+    {
+      "day": 19,
+      "week": 3,
+      "theme": "Places in town; directions",
+      "grammar": "tout droit, à gauche, à droite",
+      "review_day": false,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "TV5 directions audio"
+      },
+      "speaking": [
+        {
+          "prompt": "Give directions from your home to a landmark"
+        }
+      ],
+      "writing": {
+        "prompt": "The same directions in writing"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-15"
+    },
+    {
+      "day": 20,
+      "week": 3,
+      "theme": "Shopping, prices, quantities; pharmacy vocabulary",
+      "grammar": "combien, un peu de, beaucoup de",
+      "review_day": false,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "RFI + TV5"
+      },
+      "speaking": [
+        {
+          "prompt": "Role-play pharmacist and customer; record it"
+        }
+      ],
+      "writing": {
+        "prompt": "An 8-line pharmacy dialogue"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-16"
+    },
+    {
+      "day": 21,
+      "week": 3,
+      "theme": "Week 3 review and A1 mini-test",
+      "grammar": "timed test, target 80%",
+      "review_day": true,
+      "checkpoint": true,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "Replay Day 15 and Day 17 audio, no text"
+      },
+      "speaking": [
+        {
+          "prompt": "Record 2 minutes: you, family, your day"
+        }
+      ],
+      "writing": {
+        "prompt": "Rewrite your pharmacy dialogue"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-17"
+    },
+    {
+      "day": 22,
+      "week": 4,
+      "theme": "Passé composé with avoir",
+      "grammar": "avoir + participle",
+      "review_day": false,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "RFI + dictation"
+      },
+      "speaking": [
+        {
+          "prompt": "Tell what you did yesterday"
+        }
+      ],
+      "writing": {
+        "prompt": "8 sentences about yesterday"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-18"
+    },
+    {
+      "day": 23,
+      "week": 4,
+      "theme": "Passé composé with être",
+      "grammar": "aller, venir, arriver, partir, naître",
+      "review_day": false,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "RFI + TV5"
+      },
+      "speaking": [
+        {
+          "prompt": "Narrate last weekend for 1 minute"
+        }
+      ],
+      "writing": {
+        "prompt": "A paragraph about last weekend"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-19"
+    },
+    {
+      "day": 24,
+      "week": 4,
+      "theme": "Reflexive verbs",
+      "grammar": "se lever, se coucher, se laver",
+      "review_day": false,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "RFI + EF"
+      },
+      "speaking": [
+        {
+          "prompt": "Describe your morning routine aloud"
+        }
+      ],
+      "writing": {
+        "prompt": "A paragraph on your morning"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-20"
+    },
+    {
+      "day": 25,
+      "week": 4,
+      "theme": "Futur proche and connectors",
+      "grammar": "aller + infinitive; et, mais, parce que, donc, d'abord, ensuite",
+      "review_day": false,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "RFI + dictation"
+      },
+      "speaking": [
+        {
+          "prompt": "Next week's plans, 1 minute"
+        }
+      ],
+      "writing": {
+        "prompt": "8-sentence plan for next week"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-21"
+    },
+    {
+      "day": 26,
+      "week": 4,
+      "theme": "Writing day",
+      "grammar": "two 60-word messages",
+      "review_day": false,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "RFI full episode with transcript"
+      },
+      "speaking": [
+        {
+          "prompt": "Read your corrected message aloud 5 times; record the last one"
+        }
+      ],
+      "writing": {
+        "prompt": "Two final 60-word messages"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-22"
+    },
+    {
+      "day": 27,
+      "week": 4,
+      "theme": "A1 checkpoint",
+      "grammar": "DELF A1 sample paper, timed",
+      "review_day": false,
+      "checkpoint": true,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "The paper's listening section"
+      },
+      "speaking": [
+        {
+          "prompt": "2-minute monologue"
+        }
+      ],
+      "writing": {
+        "prompt": "The paper's writing section"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-23"
+    },
+    {
+      "day": 28,
+      "week": 4,
+      "theme": "Month 1 review and planning",
+      "grammar": "review",
+      "review_day": true,
+      "checkpoint": false,
+      "content_status": "generate_at_runtime",
+      "listening": {
+        "plan": "RFI with no transcript"
+      },
+      "speaking": [
+        {
+          "prompt": "Exchange, 20 minutes"
+        }
+      ],
+      "writing": {
+        "prompt": "6 French sentences: what changed this month"
+      },
+      "generate": {
+        "vocab": 15,
+        "drills": 10,
+        "types": [
+          "fill",
+          "translate_en_fr",
+          "translate_fr_en",
+          "mcq",
+          "order",
+          "dictation",
+          "say_it"
+        ],
+        "rules": "Use only vocabulary and grammar taught up to this day; add 30% review items from earlier days; every answer must be checkable by exact match or accepted variants."
+      },
+      "date": "2026-11-24"
+    }
+  ],
+  "phases": [
+    {
+      "phase": 1,
+      "dates": [
+        "2026-10-28",
+        "2026-11-24"
+      ],
+      "level": "A0 to A1",
+      "cumulative_hours": 84,
+      "checkpoint": {
+        "date": "2026-11-23",
+        "what": "DELF A1 sample paper"
+      }
+    },
+    {
+      "phase": 2,
+      "dates": [
+        "2026-11-25",
+        "2026-12-22"
+      ],
+      "level": "A2",
+      "cumulative_hours": 168,
+      "focus": "passé composé vs imparfait, object pronouns, comparatives",
+      "mix": "same 3-hour block; exchange 3 times a week; RFI mostly without transcript",
+      "checkpoint": {
+        "date": "2026-12-22",
+        "what": "DELF A2 sample paper, aim 60% or more"
+      }
+    },
+    {
+      "phase": 3,
+      "dates": [
+        "2026-12-23",
+        "2027-02-02"
+      ],
+      "level": "B1 entry",
+      "cumulative_hours": 294,
+      "focus": "futur simple, conditionnel, relative pronouns, y and en",
+      "mix": "paid tutor 2 hours a week; writing twice a week at 100 words",
+      "checkpoint": {
+        "date": "2027-02-02",
+        "what": "first TCF Canada sample test, expect NCLC 4-5"
+      }
+    },
+    {
+      "phase": 4,
+      "dates": [
+        "2027-02-03",
+        "2027-03-30"
+      ],
+      "level": "B1+",
+      "cumulative_hours": 462,
+      "focus": "subjunctive, passive, connectors, giving opinions",
+      "mix": "Anki 20, listening 45, speaking 40, writing 30",
+      "checkpoint": {
+        "date": "2027-03-30",
+        "what": "full TCF mock, aim NCLC 6"
+      }
+    },
+    {
+      "phase": 5,
+      "dates": [
+        "2027-03-31",
+        "2027-05-25"
+      ],
+      "level": "B2 build",
+      "cumulative_hours": 630,
+      "focus": "argumentative writing, summarising audio, 2-minute opinion talks",
+      "mix": "timed tasks 3 days a week",
+      "checkpoint": {
+        "date": "2027-05-25",
+        "what": "full mock, aim NCLC 7 on all four skills"
+      }
+    },
+    {
+      "phase": 6,
+      "dates": [
+        "2027-05-26",
+        "2027-07-13"
+      ],
+      "level": "exam drills",
+      "cumulative_hours": 777,
+      "mix": "one full mock a week; the weakest skill gets 90 minutes a day",
+      "checkpoint": {
+        "date": "2027-06-01",
+        "what": "book the exam slot"
+      }
+    },
+    {
+      "phase": 7,
+      "dates": [
+        "2027-07-14",
+        "2027-08-31"
+      ],
+      "level": "exam window",
+      "mix": "light review; re-sit after 4-6 weeks only the weak skill if any skill is under NCLC 7"
+    }
+  ],
+  "checkpoints": [
+    {
+      "date": "2026-11-17",
+      "name": "A1 mini-test (timed TV5 exercises, target 80%)"
+    },
+    {
+      "date": "2026-11-23",
+      "name": "DELF A1 sample paper"
+    },
+    {
+      "date": "2026-12-22",
+      "name": "DELF A2 sample paper"
+    },
+    {
+      "date": "2027-02-02",
+      "name": "TCF Canada sample test 1"
+    },
+    {
+      "date": "2027-03-30",
+      "name": "TCF Canada mock (NCLC 6)"
+    },
+    {
+      "date": "2027-05-25",
+      "name": "TCF Canada mock (NCLC 7)"
+    }
+  ]
+}

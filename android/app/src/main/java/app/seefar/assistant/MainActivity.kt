@@ -83,7 +83,7 @@ class MainActivity : ComponentActivity() {
                     when (brain.screen) {
                         "login" -> Login(brain)
                         "home" -> Home(brain)
-                        "french" -> FrenchScreen(brain) { brain.screen = "home" }
+                        "french" -> CoachScreen(brain) { brain.screen = "home" }
                         else -> Text("SeeFar…", color = C.dim, modifier = Modifier.align(Alignment.Center), fontSize = 20.sp)
                     }
                 }
@@ -152,6 +152,16 @@ fun Home(brain: Brain) {
         }
 
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(
+                Modifier.fillMaxWidth().background(C.red, RoundedCornerShape(20.dp)).clickable { brain.stopAll(); brain.screen = "french" }.padding(18.dp),
+                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("🇫🇷 Today's French", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("3-hour plan with Madame Roast", color = Color.White.copy(alpha = 0.85f), fontSize = 14.sp)
+                }
+                Text("START ▶", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+            }
             if (brain.cameraOn) {
                 Box(Modifier.fillMaxWidth().height(190.dp).clip(RoundedCornerShape(22.dp))) {
                     CameraView(brain.grabber, brain.frontCamera, Modifier.fillMaxSize())
@@ -186,7 +196,6 @@ fun Home(brain: Brain) {
 
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Pill("👁 What's this?") { brain.ask("Look at the camera. What is this? If it is a medicine, read the name, what it is for and the usual warnings, and tell me to check the label.", true) }
-            Pill("🇫🇷 Learn French") { brain.stopAll(); brain.screen = "french" }
             Pill("📰 Brief me") { brain.ask("Brief me for today: the time, weather, my reminders and anything important in my notifications. Keep it short and fun.") }
             Pill("🔔 My notifications") { brain.ask("Read my latest notifications and tell me which ones matter.") }
             Pill("🎲 Surprise me") { brain.ask("Tell me one random fascinating fact that I probably do not know.") }
