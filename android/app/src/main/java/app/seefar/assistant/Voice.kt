@@ -96,6 +96,30 @@ class Speaker(private val ctx: Context, private val scope: CoroutineScope) {
         }
     }
 
+    /** French through the phone's own voice: slow first (0.7), then normal. Instant and works offline. */
+    fun speakFrench(text: String, slowFirst: Boolean = true, onDone: () -> Unit = {}) {
+        stop()
+        job = scope.launch {
+            var cancelled = false
+            try {
+                if (slowFirst) speakPhone(text, "fr", {}, 0.7f)
+                speakPhone(text, "fr", {}, 1.0f)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                cancelled = true
+                throw e
+            } finally {
+                if (!cancelled) onDone()
+            }
+        }
+    }
+
+    /** False when the phone has no French voice installed. */
+    suspend fun frenchAvailable(): Boolean {
+        if (!ttsReady.await()) return false
+        val r = tts?.isLanguageAvailable(Locale.FRANCE) ?: return false
+        return r >= TextToSpeech.LANG_AVAILABLE
+    }
+
     private suspend fun playWav(bytes: ByteArray, onStart: () -> Unit) {
         val f = withContext(Dispatchers.IO) {
             File.createTempFile("clip", ".wav", ctx.cacheDir).also { it.writeBytes(bytes) }
@@ -117,11 +141,11 @@ class Speaker(private val ctx: Context, private val scope: CoroutineScope) {
         }
     }
 
-    private suspend fun speakPhone(text: String, lang: String, onStart: () -> Unit) {
+    private suspend fun speakPhone(text: String, lang: String, onStart: () -> Unit, rate: Float? = null) {
         if (!ttsReady.await()) { onStart(); return }
         val engine = tts ?: return
         engine.language = if (lang == "fr") Locale.FRANCE else Locale.US
-        engine.setSpeechRate(if (lang == "fr") 0.85f else 1.0f)
+        engine.setSpeechRate(rate ?: if (lang == "fr") 0.85f else 1.0f)
         suspendCancellableCoroutine<Unit> { cont ->
             val id = "u" + System.nanoTime()
             engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {

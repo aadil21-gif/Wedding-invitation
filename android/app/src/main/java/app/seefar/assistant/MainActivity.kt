@@ -162,6 +162,16 @@ fun Home(brain: Brain) {
                 }
                 Text("START ▶", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
             }
+            Row(
+                Modifier.fillMaxWidth().background(C.card, RoundedCornerShape(18.dp)).clickable { brain.stopAll(); brain.screen = "french" }.padding(14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("🇫🇷 Today's French · Day ${brain.frDay}", color = C.text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("Madame Roast is waiting. 3 hours, one block at a time.", color = C.dim, fontSize = 13.sp)
+                }
+                Text("›", color = C.text, fontSize = 26.sp)
+            }
             if (brain.cameraOn) {
                 Box(Modifier.fillMaxWidth().height(190.dp).clip(RoundedCornerShape(22.dp))) {
                     CameraView(brain.grabber, brain.frontCamera, Modifier.fillMaxSize())
