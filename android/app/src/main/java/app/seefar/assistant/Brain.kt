@@ -38,7 +38,6 @@ class Brain(app: Application) : AndroidViewModel(app) {
     var live by mutableStateOf(false)
     var nudgesOn by mutableStateOf(true)
     var fastVoice by mutableStateOf(true)
-    var frDay by mutableStateOf(1)
 
     fun setFast(on: Boolean) {
         fastVoice = on
@@ -56,7 +55,6 @@ class Brain(app: Application) : AndroidViewModel(app) {
 
     fun boot() {
         Api.init(ctx)
-        try { frDay = Curriculum.load(ctx).dayNumberToday() } catch (_: Exception) {}
         nudgesOn = ctx.getSharedPreferences("seefar_prefs", 0).getBoolean("nudges", true)
         fastVoice = ctx.getSharedPreferences("seefar_prefs", 0).getBoolean("fast", true)
         speaker.mode = if (fastVoice) "phone" else "auto"

@@ -207,8 +207,6 @@ object Api {
     /** Madame Roast: generate / write / talk / leech. */
     suspend fun coach(body: JSONObject): JSONObject = JSONObject(post("/api/coach", body))
 
-    suspend fun tutor(o: JSONObject): JSONObject = JSONObject(post("/api/tutor", o))
-
     suspend fun nudge(kind: String, usage: List<String>, image: String? = null, facts: List<String> = emptyList()): String {
         val o = JSONObject().put("kind", kind)
             .put("nowIso", java.time.Instant.now().toString())
