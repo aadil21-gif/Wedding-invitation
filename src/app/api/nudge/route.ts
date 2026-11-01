@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   ].filter(Boolean).join("\n");
 
   const system = [
-    "You are SEEFAR, the witty friend-and-assistant voice inside Aadil's phone (a pharmacist in Pakistan who is learning French and building startups). Your words are spoken aloud: plain text, no markdown, no emoji.",
+    "You are SEEFAR, the witty friend-and-assistant voice inside Aadil's phone (a pharmacist in Pakistan who is learning French and building startups). Your words are spoken aloud: plain text, no markdown, no emoji. Persona: a sarcastic, warm French-flavoured butler. ALWAYS write in English (at most one short French word with its meaning), funny, never preachy.",
     KINDS[kind],
     context,
     'Reply with ONE JSON object only: {"say":"..."}.',

@@ -78,6 +78,22 @@ fun CoachScreen(brain: Brain, onExit: () -> Unit) {
             loading = false
         }
     }
+    // Quietly pre-build the next two days so tomorrow opens instantly.
+    LaunchedEffect(dayNo, needsBuild, loading, tick) {
+        if (needsBuild || loading) return@LaunchedEffect
+        for (n in dayNo + 1..minOf(dayNo + 2, 28)) {
+            val d = base[n - 1]
+            if (!d.needsGen || store.generated(n) != null) continue
+            try {
+                val o = JSONObject().put("op", "generate").put("day", n).put("theme", d.theme).put("grammar", d.grammar).put("week", d.week)
+                    .put("serious", store.serious).put("taught", JSONArray(taught())).put("review", JSONArray(store.reviewItems(12).map { it.first }))
+                    .put("errors", JSONArray(store.topErrors().map { it.first }))
+                val g = Api.coach(o)
+                val m = mergeGenerated(d, g)
+                if (m.drills.size >= 6 && m.vocab.size >= 5) store.saveGenerated(n, g)
+            } catch (e: Exception) { break }
+        }
+    }
     LaunchedEffect(day.n, tick) { if (day.vocab.isNotEmpty()) store.addCards(day.vocab, "d${day.n}") }
 
     fun finishBlock(b: String) { store.markDone(dayNo, b); brain.stopAll(); block = null; tick++ }
@@ -85,7 +101,7 @@ fun CoachScreen(brain: Brain, onExit: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         val b = block
         TopBar(
-            title = if (b == null) "🇫🇷 Madame Roast" else BLOCKS.first { it.first == b }.second,
+            title = if (b == null) "🇫🇷 Madame Roast" else (BLOCKS.firstOrNull { it.first == b }?.second ?: "🎯 Weak spots"),
             onBack = { brain.stopAll(); if (b == null) onExit() else { block = null; tick++ } },
             right = { if (b == null) Text("Day $dayNo/28", color = C.gold, fontWeight = FontWeight.Bold) }
         )
@@ -98,6 +114,7 @@ fun CoachScreen(brain: Brain, onExit: () -> Unit) {
         } else {
             BlockFrame(dayNo, b, store) {
                 when (b) {
+                    "weak" -> DrillRunner(day, listOf(Drill("weak", "review_set", reviewCount = 10)), store, brain) { finishBlock("weak") }
                     "anki" -> AnkiBlock(day, store, brain) { finishBlock("anki") }
                     "lesson" -> LessonBlock(day, store, brain) { finishBlock("lesson") }
                     "listening" -> ListeningBlock(day, store, brain) { finishBlock("listening") }
@@ -116,7 +133,7 @@ private fun BlockFrame(day: Int, block: String, store: CoachStore, content: @Com
     var secs by remember { mutableStateOf(0) }
     LaunchedEffect(Unit) { while (true) { delay(1000); secs++ } }
     DisposableEffect(Unit) { onDispose { store.addSeconds(day, block, secs) } }
-    val target = BLOCKS.first { it.first == block }.third
+    val target = BLOCKS.firstOrNull { it.first == block }?.third ?: 0
     if (target > 0) Text("⏱ ${secs / 60}:${"%02d".format(secs % 60)}  /  $target min", color = C.dim, fontSize = 13.sp)
     Spacer(Modifier.height(6.dp))
     content()
@@ -145,6 +162,17 @@ private fun Home(
         if (loading) Text("Madame Roast is building today's lesson…", color = C.dim, fontSize = 16.sp)
         if (error.isNotBlank()) { Text(error, color = C.red, fontSize = 15.sp); BigButton("Retry", C.blue, Modifier.fillMaxWidth()) { onRetry() } }
         if (!needsBuild) {
+            val prev = if (day.n > 1) store.drillStats(day.n - 1) else 0 to 0
+            val acc = if (prev.second >= 8) prev.first * 100 / prev.second else -1
+            val weakCount = store.reviewItems(10).size
+            if (acc >= 90 && day.n < 28) Card {
+                Text("Yesterday: $acc% on drills. Suspiciously competent.", color = C.green, fontWeight = FontWeight.Bold)
+                Text("Keep the pace, or skip ahead a day if today feels easy.", color = C.dim, fontSize = 13.sp)
+                Pill("Skip to day ${day.n + 1}") { onDay(day.n + 1) }
+            } else if (acc in 0..64) Card {
+                Text("Yesterday: $acc%. Shaky. Weak spots first, then today.", color = C.gold, fontWeight = FontWeight.Bold)
+            }
+            if (weakCount >= 3) BigButton("🎯 Weak spots ($weakCount of your own mistakes)", C.blue, Modifier.fillMaxWidth()) { onBlock("weak") }
             if (next != null && next != "checkin") BigButton("▶ Start: " + BLOCKS.first { it.first == next }.second, C.red, Modifier.fillMaxWidth()) { onBlock(next) }
             for ((id, label, mins) in BLOCKS) {
                 val ok = id in done

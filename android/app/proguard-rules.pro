@@ -1,0 +1,7 @@
+-keep class app.seefar.assistant.** { *; }
+-keep class org.json.** { *; }
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.openjsse.**

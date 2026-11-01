@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_COOKIE, AUTH_COOKIE_VALUE, passcodeConfigured } from "@/lib/auth";
 import { checkPasscode } from "@/lib/passcode";
+import { authThrottled, authFailed, authOk } from "@/lib/authThrottle";
 
 export async function POST(request: NextRequest) {
   if (!passcodeConfigured()) {
@@ -10,13 +11,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (authThrottled(ip)) {
+    return NextResponse.json({ error: "Too many attempts. Wait 15 minutes." }, { status: 429 });
+  }
+
   const body = await request.json().catch(() => null);
   const passcode = typeof body?.passcode === "string" ? body.passcode : "";
 
   if (!checkPasscode(passcode)) {
+    authFailed(ip);
     return NextResponse.json({ error: "Wrong passcode." }, { status: 401 });
   }
 
+  authOk(ip);
   const response = NextResponse.json({ ok: true });
   response.cookies.set(AUTH_COOKIE, AUTH_COOKIE_VALUE, {
     httpOnly: true,

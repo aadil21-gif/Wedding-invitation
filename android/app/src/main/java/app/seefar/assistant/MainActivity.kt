@@ -64,9 +64,26 @@ class MainActivity : ComponentActivity() {
 
     private val perms = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {}
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        handleGo(intent)
+    }
+
+    /** Widget taps: "french" opens the coach, "talk" starts listening. */
+    private fun handleGo(i: android.content.Intent?) {
+        val go = i?.getStringExtra("go") ?: return
+        i.removeExtra("go")
+        if (brain.screen == "login") return
+        when (go) {
+            "french" -> brain.screen = "french"
+            "talk" -> { brain.screen = "home"; if (brain.status == Status.Idle && Device.has(this, Manifest.permission.RECORD_AUDIO)) brain.micTap() }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         brain.boot()
+        handleGo(intent)
         val needed = buildList {
             add(Manifest.permission.RECORD_AUDIO)
             add(Manifest.permission.CAMERA)

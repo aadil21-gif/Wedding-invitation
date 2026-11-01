@@ -136,6 +136,15 @@ object Api {
         false
     }
 
+    /** True unless the server explicitly says we are logged out (offline keeps you in). */
+    suspend fun isLoggedInStrict(): Boolean = try {
+        get("/api/french/course"); true
+    } catch (e: ApiException) {
+        e.code != 401
+    } catch (e: Exception) {
+        true
+    }
+
     suspend fun login(passcode: String) {
         post("/api/auth", JSONObject().put("passcode", passcode))
     }

@@ -58,9 +58,22 @@ class Brain(app: Application) : AndroidViewModel(app) {
         nudgesOn = ctx.getSharedPreferences("seefar_prefs", 0).getBoolean("nudges", true)
         fastVoice = ctx.getSharedPreferences("seefar_prefs", 0).getBoolean("fast", true)
         speaker.mode = if (fastVoice) "phone" else "auto"
-        viewModelScope.launch {
-            screen = if (Api.isLoggedIn()) "home" else "login"
-            if (screen == "home") onHome()
+        val prefs = ctx.getSharedPreferences("seefar_prefs", 0)
+        if (prefs.getBoolean("authed", false)) {
+            // Instant: show home now, verify the session quietly in the background.
+            screen = "home"
+            onHome()
+            viewModelScope.launch {
+                if (!Api.isLoggedInStrict()) {
+                    prefs.edit().putBoolean("authed", false).apply()
+                    screen = "login"
+                }
+            }
+        } else {
+            viewModelScope.launch {
+                screen = if (Api.isLoggedIn()) "home" else "login"
+                if (screen == "home") { prefs.edit().putBoolean("authed", true).apply(); onHome() }
+            }
         }
     }
 
@@ -69,6 +82,7 @@ class Brain(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 Api.login(code.trim())
+                ctx.getSharedPreferences("seefar_prefs", 0).edit().putBoolean("authed", true).apply()
                 screen = "home"
                 onHome()
             } catch (e: ApiException) {
@@ -82,6 +96,7 @@ class Brain(app: Application) : AndroidViewModel(app) {
     fun logout() {
         stopAll()
         Api.logoutLocal()
+        ctx.getSharedPreferences("seefar_prefs", 0).edit().putBoolean("authed", false).apply()
         screen = "login"
     }
 
