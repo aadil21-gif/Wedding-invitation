@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -153,7 +154,7 @@ private fun lev(a: String, b: String): Int {
 private fun forms(fr: String): List<String> =
     fr.split('/', ';').map { it.replace(Regex("\\(.*?\\)"), "").trim() }.filter { it.isNotBlank() }.ifEmpty { listOf(fr) }
 
-private fun similarity(heard: String, fr: String): Double {
+private fun frSimilarity(heard: String, fr: String): Double {
     val x = norm(heard)
     if (x.isBlank()) return 0.0
     return forms(fr).maxOf { f ->
@@ -317,7 +318,7 @@ fun TutorScreen(brain: Brain, onExit: () -> Unit, onLessons: () -> Unit) {
                         h == AGAIN -> { frSay(fr) }
                         h == null -> { silent += 2; talk("The mic had a problem. Tap the keyboard and type it, or skip."); if (silent >= 4) tries = 3 }
                         h.isBlank() -> { silent++; if (silent >= 3) tries = 3 else talk("I heard nothing. Louder, please. Nobody's judging. Except me.") }
-                        similarity(h, fr) >= 0.72 -> {
+                        frSimilarity(h, fr) >= 0.72 -> {
                             ok = true
                             store.drillResult(dayNo, true)
                             talk(PRAISE.random())
@@ -351,7 +352,7 @@ fun TutorScreen(brain: Brain, onExit: () -> Unit, onLessons: () -> Unit) {
                 talk("How do you say: $en?")
                 val h = listenFor()
                 if (h == SKIP) continue
-                val good = h != null && similarity(h, fr) >= 0.72
+                val good = h != null && frSimilarity(h, fr) >= 0.72
                 store.drillResult(dayNo, good)
                 if (good) talk(PRAISE.random())
                 else {
