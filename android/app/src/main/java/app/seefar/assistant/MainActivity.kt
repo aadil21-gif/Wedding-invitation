@@ -100,7 +100,8 @@ class MainActivity : ComponentActivity() {
                     when (brain.screen) {
                         "login" -> Login(brain)
                         "home" -> Home(brain)
-                        "french" -> CoachScreen(brain) { brain.screen = "home" }
+                        "french" -> TutorScreen(brain, onExit = { brain.screen = "home" }, onLessons = { brain.screen = "lessons" })
+                        "lessons" -> CoachScreen(brain) { brain.screen = "french" }
                         else -> Text("SeeFar…", color = C.dim, modifier = Modifier.align(Alignment.Center), fontSize = 20.sp)
                     }
                 }
