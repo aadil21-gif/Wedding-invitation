@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">SeeFar</string>
+    <string name="guard_desc">SeeFar Guard only checks which app is on screen, to enforce your daily social-media limit and block banned apps. It cannot read your screen, messages or passwords.</string>
 </resources>

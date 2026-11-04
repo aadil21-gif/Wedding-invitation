@@ -58,6 +58,7 @@ class Brain(app: Application) : AndroidViewModel(app) {
         nudgesOn = ctx.getSharedPreferences("seefar_prefs", 0).getBoolean("nudges", true)
         fastVoice = ctx.getSharedPreferences("seefar_prefs", 0).getBoolean("fast", true)
         speaker.mode = if (fastVoice) "phone" else "auto"
+        WorkManager.getInstance(ctx).enqueueUniquePeriodicWork("guard-watch", ExistingPeriodicWorkPolicy.KEEP, PeriodicWorkRequestBuilder<GuardWatchWorker>(15, TimeUnit.MINUTES).build())
         val prefs = ctx.getSharedPreferences("seefar_prefs", 0)
         if (prefs.getBoolean("authed", false)) {
             // Instant: show home now, verify the session quietly in the background.

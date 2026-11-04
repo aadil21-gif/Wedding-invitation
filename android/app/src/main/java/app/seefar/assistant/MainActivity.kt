@@ -102,6 +102,7 @@ class MainActivity : ComponentActivity() {
                         "home" -> Home(brain)
                         "french" -> TutorScreen(brain, onExit = { brain.screen = "home" }, onLessons = { brain.screen = "lessons" })
                         "lessons" -> CoachScreen(brain) { brain.screen = "french" }
+                        "guard" -> GuardScreen(brain) { brain.screen = "home" }
                         else -> Text("SeeFar…", color = C.dim, modifier = Modifier.align(Alignment.Center), fontSize = 20.sp)
                     }
                 }
@@ -213,6 +214,7 @@ fun Home(brain: Brain) {
         }
 
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Pill("🛡 Guard") { brain.stopAll(); brain.screen = "guard" }
             Pill("👁 What's this?") { brain.ask("Look at the camera. What is this? If it is a medicine, read the name, what it is for and the usual warnings, and tell me to check the label.", true) }
             Pill("📰 Brief me") { brain.ask("Brief me for today: the time, weather, my reminders and anything important in my notifications. Keep it short and fun.") }
             Pill("🔔 My notifications") { brain.ask("Read my latest notifications and tell me which ones matter.") }
