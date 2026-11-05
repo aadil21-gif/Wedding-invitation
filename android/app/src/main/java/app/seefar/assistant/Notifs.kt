@@ -29,15 +29,37 @@ object Notifs {
         prefs(ctx).edit().putString("list", JSONArray(l.takeLast(15)).toString()).apply()
     }
 
+    val MSG = setOf(
+        "com.whatsapp", "com.whatsapp.w4b", "org.telegram.messenger", "com.facebook.orca", "com.google.android.apps.messaging",
+        "com.android.mms", "com.samsung.android.messaging", "com.miui.mms", "com.google.android.gm",
+    )
+
+    /** Unread chat messages, kept only on the phone and read aloud locally (never sent to the AI). */
+    fun addUnread(ctx: Context, app: String, from: String, text: String) {
+        val a = try { JSONArray(prefs(ctx).getString("unread", "[]")) } catch (e: Exception) { JSONArray() }
+        val last = a.optJSONObject(a.length() - 1)
+        if (last != null && last.optString("f") == from && last.optString("x") == text) return
+        a.put(org.json.JSONObject().put("a", app).put("f", from).put("x", text))
+        val keep = JSONArray()
+        for (i in maxOf(0, a.length() - 30) until a.length()) keep.put(a.get(i))
+        prefs(ctx).edit().putString("unread", keep.toString()).apply()
+    }
+
+    fun takeUnread(ctx: Context): List<Triple<String, String, String>> {
+        val a = try { JSONArray(prefs(ctx).getString("unread", "[]")) } catch (e: Exception) { JSONArray() }
+        prefs(ctx).edit().remove("unread").apply()
+        return (0 until a.length()).mapNotNull { a.optJSONObject(it) }.map { Triple(it.optString("a"), it.optString("f"), it.optString("x")) }
+    }
+
     fun channel(ctx: Context) {
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(NotificationChannel("seefar", "SeeFar nudges", NotificationManager.IMPORTANCE_DEFAULT))
     }
 
-    fun post(ctx: Context, title: String, text: String, id: Int) {
+    fun post(ctx: Context, title: String, text: String, id: Int, go: String? = null) {
         channel(ctx)
         val open = android.app.PendingIntent.getActivity(
-            ctx, 0, android.content.Intent(ctx, MainActivity::class.java),
+            ctx, id, android.content.Intent(ctx, MainActivity::class.java).also { if (go != null) it.putExtra("go", go) },
             android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
         )
         val n = NotificationCompat.Builder(ctx, "seefar")
@@ -61,6 +83,7 @@ class SeeFarNotificationListener : NotificationListenerService() {
         if (title.isBlank() && text.isBlank()) return
         val app = try { packageManager.getApplicationLabel(packageManager.getApplicationInfo(sbn.packageName, 0)).toString() } catch (e: Exception) { sbn.packageName }
         Notifs.add(this, "$app · $title: $text".take(200))
+        if (sbn.packageName in Notifs.MSG) Notifs.addUnread(this, app, title, text)
     }
 }
 
@@ -97,5 +120,15 @@ class NudgeWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
         } catch (e: Exception) {
             Result.success()
         }
+    }
+}
+
+/** Once a day, around 9 pm: ask about tomorrow. Skipped if you already planned today. */
+class PlanWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
+    override fun doWork(): Result {
+        val c = applicationContext
+        if (Cal.plannedToday(c)) return Result.success()
+        Notifs.post(c, "Tomorrow, monsieur?", "Tell me what's on tomorrow and I'll put it in your calendar. Work things only.", 7005, go = "plan")
+        return Result.success()
     }
 }

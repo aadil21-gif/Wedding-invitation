@@ -28,6 +28,8 @@ export type Action =
   | { type: "list_add"; list: string; item: string }
   | { type: "remember"; fact: string }
   | { type: "camera" }
+  | { type: "event"; title: string; date: string; time: string; minutes: number }
+  | { type: "events_clear" }
   | { type: "open"; url: string }
   | {
       type: "robot";

@@ -11,6 +11,8 @@ const KINDS = {
     "Look at how he used his phone today. If something looks like time-wasting (social media, games, video) for long, call it out in a playful but pointed way and suggest ONE concrete better thing to do next (10 minutes of French, a walk, work on his projects). If usage looks fine, praise him briefly. Under 40 words. Never shame him, tease him.",
   observe:
     "You see through his camera what is in front of him. Make ONE short, funny or useful remark about what you see (under 25 words). If it is a medicine, name it and say to check the label. If nothing interesting is visible or you cannot tell what it is, return an empty say.",
+  narrate:
+    "You are narrating live what his phone camera sees, like a witty sports commentator. ONE short sentence, max 20 words, about what is in view right now. Never repeat or rephrase anything you already said; mention only what is new or different. If it is a medicine, name it and say to check the label. If the image is too dark or unclear, say so in a few words. Never name real people.",
   morning:
     "Give a quick, upbeat morning briefing opener in under 40 words using the date and his reminders. End with one nudge for the day.",
   idle:
@@ -31,6 +33,7 @@ export async function POST(request: NextRequest) {
     `Now: ${str(body?.nowIso, 40) || new Date().toISOString()}.`,
     list(body?.usage, 8, 60).length ? `Phone use today: ${list(body?.usage, 8, 60).join(", ")}.` : "",
     list(body?.reminders, 5, 100).length ? `Reminders: ${list(body?.reminders, 5, 100).join("; ")}.` : "",
+    list(body?.recent, 4, 200).length ? `You already said (do not repeat): ${list(body?.recent, 4, 200).join(" | ")}.` : "",
     list(body?.facts, 10, 140).length ? `About him: ${list(body?.facts, 10, 140).join("; ")}.` : "",
   ].filter(Boolean).join("\n");
 

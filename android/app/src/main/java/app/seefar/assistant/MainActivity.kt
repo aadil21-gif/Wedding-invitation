@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
         if (brain.screen == "login") return
         when (go) {
             "french" -> brain.screen = "french"
+            "plan" -> { brain.screen = "home"; brain.planTomorrow() }
             "talk" -> { brain.screen = "home"; if (brain.status == Status.Idle && Device.has(this, Manifest.permission.RECORD_AUDIO)) brain.micTap() }
         }
     }
@@ -90,6 +91,8 @@ class MainActivity : ComponentActivity() {
             add(Manifest.permission.CALL_PHONE)
             add(Manifest.permission.READ_CONTACTS)
             add(Manifest.permission.ACCESS_COARSE_LOCATION)
+            add(Manifest.permission.WRITE_CALENDAR)
+            add(Manifest.permission.READ_CALENDAR)
             if (android.os.Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
         }.filter { !Device.has(this, it) }
         if (needed.isNotEmpty()) perms.launch(needed.toTypedArray())
@@ -214,6 +217,9 @@ fun Home(brain: Brain) {
         }
 
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Pill("💬 Read my messages") { brain.send("read my new messages") }
+            Pill("🎬 Narrate") { brain.narrate() }
+            Pill("📅 Plan tomorrow") { brain.planTomorrow() }
             Pill("🛡 Guard") { brain.stopAll(); brain.screen = "guard" }
             Pill("👁 What's this?") { brain.ask("Look at the camera. What is this? If it is a medicine, read the name, what it is for and the usual warnings, and tell me to check the label.", true) }
             Pill("📰 Brief me") { brain.ask("Brief me for today: the time, weather, my reminders and anything important in my notifications. Keep it short and fun.") }

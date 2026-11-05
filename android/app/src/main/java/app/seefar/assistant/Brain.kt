@@ -10,6 +10,9 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.coroutines.resume
 import org.json.JSONObject
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -52,6 +55,9 @@ class Brain(app: Application) : AndroidViewModel(app) {
     private var lastActivity = System.currentTimeMillis()
     private var gen = 0
     private var loop: Job? = null
+    private var narrator: Job? = null
+    private var planPending = false
+    var narrating by mutableStateOf(false)
 
     fun boot() {
         Api.init(ctx)
@@ -59,6 +65,15 @@ class Brain(app: Application) : AndroidViewModel(app) {
         fastVoice = ctx.getSharedPreferences("seefar_prefs", 0).getBoolean("fast", true)
         speaker.mode = if (fastVoice) "phone" else "auto"
         WorkManager.getInstance(ctx).enqueueUniquePeriodicWork("guard-watch", ExistingPeriodicWorkPolicy.KEEP, PeriodicWorkRequestBuilder<GuardWatchWorker>(15, TimeUnit.MINUTES).build())
+        run {
+            val now = java.time.LocalDateTime.now()
+            var next = now.toLocalDate().atTime(21, 0)
+            if (!next.isAfter(now)) next = next.plusDays(1)
+            WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(
+                "plan", ExistingPeriodicWorkPolicy.KEEP,
+                PeriodicWorkRequestBuilder<PlanWorker>(24, TimeUnit.HOURS).setInitialDelay(java.time.Duration.between(now, next).toMillis(), TimeUnit.MILLISECONDS).build()
+            )
+        }
         val prefs = ctx.getSharedPreferences("seefar_prefs", 0)
         if (prefs.getBoolean("authed", false)) {
             // Instant: show home now, verify the session quietly in the background.
@@ -133,6 +148,8 @@ class Brain(app: Application) : AndroidViewModel(app) {
 
     fun stopAll() {
         gen++
+        narrating = false
+        narrator?.cancel()
         speaker.stop()
         listener.stop()
         status = Status.Idle
@@ -182,6 +199,12 @@ class Brain(app: Application) : AndroidViewModel(app) {
     fun send(text: String, extra: JSONObject? = null, frame: String? = null, voiceStyle: String = "natural") {
         val t = text.trim()
         if (t.isEmpty()) return
+        if (handleLocal(t)) return
+        val apiText = if (planPending) {
+            planPending = false
+            val d = java.time.LocalDate.now().plusDays(1)
+            "Tomorrow is $d (${d.dayOfWeek}). I am telling you my schedule for tomorrow: \"$t\". Add one \"event\" action per item with the date, a 24h time and minutes (default 60). Only what I said, invent nothing. If a time is missing, ask me for it instead of guessing. If I said nothing is planned, just say OK. Reply briefly."
+        } else t
         val g = ++gen
         listener.stop()
         speaker.stop()
@@ -194,7 +217,7 @@ class Brain(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             try {
                 val img = frame ?: if (cameraOn) grabber.latest else null
-                val reply = Api.chat(t, img, Device.context(ctx, store), history, extra)
+                val reply = Api.chat(apiText, img, Device.context(ctx, store), history, extra)
                 if (g != gen) return@launch
                 history += "user" to t
                 history += "assistant" to reply.say
@@ -211,6 +234,105 @@ class Brain(app: Application) : AndroidViewModel(app) {
                 if (g == gen) fail("No internet connection.", false)
             }
         }
+    }
+
+    // ---------- local commands (instant, no AI, nothing leaves the phone) ----------
+
+    private val readRe = Regex("\\b(read|check|any|tell me)\\b.*\\b(messages?|whatsapp|texts?|sms)\\b|\\bnew messages?\\b", RegexOption.IGNORE_CASE)
+    private val narrateRe = Regex("\\b(narrate|commentate|commentary|keep (telling|describing)|describe .*(continuously|live|as i move))", RegexOption.IGNORE_CASE)
+    private val stopRe = Regex("^(please )?(stop|enough|quiet|shut up|cancel)\\b.*", RegexOption.IGNORE_CASE)
+
+    private fun handleLocal(t: String): Boolean {
+        if (t.length < 25 && stopRe.matches(t)) { stopAll(); live = false; return true }
+        if (narrateRe.containsMatchIn(t)) { narrate(); return true }
+        if (t.length < 60 && readRe.containsMatchIn(t)) { readMessages(t); return true }
+        return false
+    }
+
+    /** Reads unread chat notifications aloud with the phone voice. The text never goes to the AI. */
+    private fun readMessages(q: String) {
+        val g = ++gen
+        listener.stop(); speaker.stop()
+        question = q; partial = ""; error = ""; chips.clear(); cards.clear()
+        val items = Notifs.takeUnread(ctx)
+        val text = if (items.isEmpty()) "No new messages. Either you are very popular in silence, or very unpopular." else buildString {
+            for ((app, from, x) in items.takeLast(8)) {
+                val body = if (x.contains("voice message", true) || x.startsWith("🎤")) "sent a voice message" else x.take(200)
+                append("On $app, $from: $body. ")
+            }
+            if (items.size > 8) append("And ${items.size - 8} older ones.")
+        }
+        mood = "happy"
+        speakReply(text, g, "natural")
+    }
+
+    private suspend fun speakAndWait(text: String) = suspendCancellableCoroutine<Unit> { c ->
+        speaker.speak(text, "natural", "en", onDone = { if (c.isActive) c.resume(Unit) })
+        c.invokeOnCancellation { speaker.stop() }
+    }
+
+    private suspend fun listenBriefly(): String {
+        val r = withTimeoutOrNull(4500) {
+            suspendCancellableCoroutine<String> { c ->
+                listener.start("en", {}, { h -> if (c.isActive) c.resume(h) }, { _ -> if (c.isActive) c.resume("") })
+                c.invokeOnCancellation { listener.stop() }
+            }
+        }
+        listener.stop()
+        return r ?: ""
+    }
+
+    /** Pseudo-live commentary: a fresh frame every few seconds. Stop by saying "stop" or tapping the orb. */
+    fun narrate() {
+        stopAll()
+        live = false
+        cameraOn = true
+        narrating = true
+        question = "Narrating what the camera sees"
+        narrator = viewModelScope.launch {
+            val said = ArrayList<String>()
+            var fails = 0
+            val stopWords = Regex("\\b(stop|enough|quiet|okay|ok|thanks|that's all|shut)\\b", RegexOption.IGNORE_CASE)
+            while (narrating) {
+                var w = 0
+                while (grabber.latest == null && w++ < 25) delay(200)
+                val frame = grabber.latest
+                status = Status.Thinking
+                val say = try { if (frame == null) "" else Api.nudge("narrate", emptyList(), frame, emptyList(), said.takeLast(3)) } catch (e: Exception) { "" }
+                if (!narrating) break
+                if (say.isBlank()) {
+                    fails++
+                    if (fails >= 3) { error = "The free AI is not seeing right now (rate-limited). Try again in a minute."; break }
+                    delay(3000)
+                    continue
+                }
+                fails = 0
+                said += say
+                shown = say
+                status = Status.Speaking
+                speakAndWait(say)
+                if (!narrating) break
+                status = Status.Listening
+                val heard = listenBriefly()
+                if (stopWords.containsMatchIn(heard)) break
+                delay(600)
+            }
+            narrating = false
+            status = Status.Idle
+        }
+    }
+
+    /** "What's planned for tomorrow?" then the answer becomes calendar entries. */
+    fun planTomorrow() {
+        stopAll()
+        val g = ++gen
+        planPending = true
+        question = ""
+        shown = "What's planned for tomorrow?"
+        status = Status.Speaking
+        speaker.speak("What's planned for tomorrow? Work things only, I'll add them to your calendar.", "natural", "en", onDone = {
+            if (g == gen) { status = Status.Idle; listen() }
+        })
     }
 
     private fun fail(msg: String, relogin: Boolean) {

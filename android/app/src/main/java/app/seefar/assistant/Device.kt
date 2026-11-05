@@ -244,6 +244,8 @@ object Device {
                 "note" -> { store.addNote(a.optString("text")); out += "📝 Noted." }
                 "list_add" -> { store.addToList(a.optString("list"), a.optString("item")); out += "✅ Added to ${a.optString("list")}: ${a.optString("item")}" }
                 "remember" -> { store.addFact(a.optString("fact")); out += "🧠 I will remember that." }
+                "event" -> out += Cal.add(ctx, a.optString("title"), a.optString("date"), a.optString("time"), a.optInt("minutes", 60))
+                "events_clear" -> out += Cal.clear(ctx)
                 "camera" -> onCamera()
                 "open" -> {
                     val url = a.optString("url")

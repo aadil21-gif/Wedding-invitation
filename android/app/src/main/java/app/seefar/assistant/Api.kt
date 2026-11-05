@@ -216,10 +216,10 @@ object Api {
     /** Madame Roast: generate / write / talk / leech. */
     suspend fun coach(body: JSONObject): JSONObject = JSONObject(post("/api/coach", body))
 
-    suspend fun nudge(kind: String, usage: List<String>, image: String? = null, facts: List<String> = emptyList()): String {
+    suspend fun nudge(kind: String, usage: List<String>, image: String? = null, facts: List<String> = emptyList(), recent: List<String> = emptyList()): String {
         val o = JSONObject().put("kind", kind)
             .put("nowIso", java.time.Instant.now().toString())
-            .put("usage", JSONArray(usage)).put("facts", JSONArray(facts))
+            .put("usage", JSONArray(usage)).put("facts", JSONArray(facts)).put("recent", JSONArray(recent))
         if (image != null) o.put("image", image)
         return JSONObject(post("/api/nudge", o)).optString("say")
     }

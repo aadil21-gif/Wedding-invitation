@@ -17,6 +17,8 @@ const ACTION_HELP = `Device actions (put in "actions"; the phone performs them):
  {"type":"music","query":"song or artist"}
  {"type":"note","text":"..."}   {"type":"list_add","list":"shopping","item":"milk"}
  {"type":"remember","fact":"short fact about the user to remember"}
+ {"type":"event","title":"Meeting with Dr Ali","date":"2026-11-06","time":"14:30","minutes":60}  (adds a Google Calendar entry; date is YYYY-MM-DD, time 24h; only for things the user actually said, never invent one)
+ {"type":"events_clear"}  (deletes the calendar entries SeeFar created earlier)
  {"type":"camera"}  (turn the camera on so you can see)
  {"type":"open","url":"https://..."}`;
 
@@ -205,6 +207,16 @@ export function sanitizeActions(raw: unknown, kid: boolean): Action[] {
       const name = s(a.name, 60);
       if (/^\+?\d{6,15}$/.test(number)) out.push({ type, number, text: s(a.text, 500) });
       else if (name) out.push({ type, name, text: s(a.text, 500) });
+    } else if (type === "event") {
+      const title = s(a.title, 100);
+      const date = s(a.date, 10);
+      const time = s(a.time, 5);
+      const minutes = Math.round(n(a.minutes)) || 60;
+      if (title && /^\d{4}-\d{2}-\d{2}$/.test(date) && /^([01]?\d|2[0-3]):[0-5]\d$/.test(time)) {
+        out.push({ type, title, date, time, minutes: Math.max(5, Math.min(720, minutes)) });
+      }
+    } else if (type === "events_clear") {
+      out.push({ type });
     } else if (type === "music") {
       const query = s(a.query, 120);
       if (query) out.push({ type, query });
