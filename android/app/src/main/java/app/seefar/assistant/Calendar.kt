@@ -48,6 +48,18 @@ object Cal {
         for (id in ids) try { ctx.contentResolver.delete(ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id), null, null) } catch (_: Exception) { }
     }
 
+    private fun wipeMine(ctx: Context) {
+        val ids = HashSet<Long>(mine(ctx).map { it.first })
+        try {
+            ctx.contentResolver.query(
+                CalendarContract.Events.CONTENT_URI, arrayOf(CalendarContract.Events._ID),
+                "${CalendarContract.Events.DESCRIPTION}=? AND ${CalendarContract.Events.DELETED}=0", arrayOf("Added by SeeFar"), null
+            )?.use { c -> while (c.moveToNext()) ids.add(c.getLong(0)) }
+        } catch (_: Exception) { }
+        deleteIds(ctx, ids.toList())
+        save(ctx, emptyList())
+    }
+
     fun add(ctx: Context, title: String, date: String, time: String, minutes: Int): String {
         if (!Device.has(ctx, Manifest.permission.WRITE_CALENDAR)) return "Allow calendar access for SeeFar in Settings, then ask again."
         return try {
@@ -55,12 +67,12 @@ object Cal {
             val d = LocalDate.parse(date)
             val (h, m) = time.split(":").map { it.trim().toInt() }
             val start = LocalDateTime.of(d, LocalTime.of(h, m)).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            // Old entries SeeFar made earlier are cleaned out before adding new ones.
-            val todayStart = LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
-            val all = mine(ctx)
-            val old = all.filter { it.second < todayStart }
-            deleteIds(ctx, old.map { it.first })
-            val keep = all.filter { it.second >= todayStart }.toMutableList()
+            // First entry of a new planning session: wipe everything SeeFar added before (any date),
+            // found both by saved ids and by the "Added by SeeFar" tag, so older builds' entries go too.
+            val nowMs = System.currentTimeMillis()
+            val newBatch = nowMs - p(ctx).getLong("lastAdd", 0L) > 120_000L
+            var keep = mine(ctx)
+            if (newBatch) { wipeMine(ctx); keep = mutableListOf() }
             val v = ContentValues().apply {
                 put(CalendarContract.Events.CALENDAR_ID, calId)
                 put(CalendarContract.Events.TITLE, title.take(100))
@@ -81,7 +93,7 @@ object Cal {
             } catch (_: Exception) { }
             keep.add(id to start)
             save(ctx, keep)
-            p(ctx).edit().putString("planDate", LocalDate.now().toString()).apply()
+            p(ctx).edit().putString("planDate", LocalDate.now().toString()).putLong("lastAdd", System.currentTimeMillis()).apply()
             "📅 $title · $date $time"
         } catch (e: Exception) {
             "I could not add that to the calendar."
@@ -90,9 +102,7 @@ object Cal {
 
     fun clear(ctx: Context): String {
         if (!Device.has(ctx, Manifest.permission.WRITE_CALENDAR)) return "Allow calendar access for SeeFar in Settings first."
-        val all = mine(ctx)
-        deleteIds(ctx, all.map { it.first })
-        save(ctx, emptyList())
-        return "🗑 Removed ${all.size} entries I had added. Yours are untouched."
+        wipeMine(ctx)
+        return "🗑 Removed the entries I had added. Yours are untouched."
     }
 }

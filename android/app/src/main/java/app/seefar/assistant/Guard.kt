@@ -1,8 +1,14 @@
 package app.seefar.assistant
 
-import android.accessibilityservice.AccessibilityService
+import android.app.AppOpsManager
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.Service
 import android.app.admin.DeviceAdminReceiver
 import android.app.admin.DevicePolicyManager
+import android.app.usage.UsageEvents
+import android.app.usage.UsageStatsManager
 import android.content.BroadcastReceiver
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -10,12 +16,21 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ServiceInfo
+import android.graphics.Color as AColor
+import android.graphics.PixelFormat
 import android.net.Uri
+import android.os.Build
 import android.os.Handler
+import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
-import android.view.accessibility.AccessibilityEvent
+import android.view.Gravity
+import android.view.View
+import android.view.WindowManager
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -36,17 +51,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.delay
+import java.time.LocalTime
 
-// ---------------------------------------------------------------- rules + storage
+// ---------------------------------------------------------------- rules
 
 object Guard {
     /** Counted together against one daily budget. */
@@ -57,7 +75,7 @@ object Guard {
     )
     val limitedNames = listOf("Instagram", "Facebook", "X / Twitter", "TikTok", "Reddit", "Pinterest")
 
-    /** Never usable: opened = thrown to the home screen, installed = nagged to uninstall. */
+    /** Never usable: opened = covered and sent home, installed = nagged to uninstall. */
     private val bannedPkgs = setOf(
         "com.snapchat.android", "com.opera.browser", "com.opera.browser.beta", "com.opera.mini.native",
         "com.opera.mini.native.beta", "com.opera.gx", "com.opera.touch", "com.tinder", "com.bumble.app",
@@ -65,6 +83,17 @@ object Guard {
     )
     private val bannedRe = Regex("\\b(opera|snapchat|omegle|ometv|azar|tinder|bumble|badoo|hinge|chatib|wizz|holla|chatrandom|chatroulette|bigo|yubo|tango|chatous)\\b")
     val bannedNames = "Snapchat, Opera (all versions), Tinder, Bumble, Hinge, Badoo, Azar, OmeTV, Omegle-style random chat, Wizz, Holla, Bigo, Yubo, Tango"
+
+    /** Browsers only work while a filtering Private DNS is set. */
+    val browsers = setOf(
+        "com.android.chrome", "com.chrome.beta", "com.chrome.dev", "org.mozilla.firefox", "org.mozilla.fenix", "org.mozilla.firefox_beta",
+        "com.brave.browser", "com.microsoft.emmx", "com.sec.android.app.sbrowser", "com.mi.globalbrowser", "com.android.browser",
+        "com.duckduckgo.mobile.android", "com.kiwibrowser.browser", "com.vivaldi.browser", "com.UCMobile.intl", "com.uc.browser.en",
+        "org.torproject.torbrowser", "com.yandex.browser", "mark.via.gp",
+    )
+
+    /** Extra things shut at night, on top of social + browsers. */
+    private val nightExtra = setOf("com.google.android.youtube", "com.android.vending", "org.telegram.messenger", "com.android.settings")
 
     private val labels = HashMap<String, String>()
 
@@ -83,6 +112,8 @@ object Guard {
     }
 
     fun isLimited(pkg: String) = pkg in limited
+    fun isBrowser(pkg: String) = pkg in browsers
+    fun isNightBlocked(pkg: String) = pkg in limited || pkg in browsers || pkg in nightExtra
 
     fun installedBanned(ctx: Context): List<Pair<String, String>> = try {
         val pm = ctx.packageManager
@@ -91,10 +122,21 @@ object Guard {
             .map { it.packageName to pm.getApplicationLabel(it).toString() }
     } catch (e: Exception) { emptyList() }
 
-    fun accessibilityOn(ctx: Context): Boolean {
-        val s = Settings.Secure.getString(ctx.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
-        return s.contains(ctx.packageName) && s.contains("SeeFarGuardService")
-    }
+    /** Night lock window: 23:00 to 05:00. */
+    fun isNight(now: LocalTime = LocalTime.now()) = now.hour >= 23 || now.hour < 5
+
+    fun usageOn(ctx: Context): Boolean = try {
+        val ao = ctx.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+        val mode = if (Build.VERSION.SDK_INT >= 29) ao.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), ctx.packageName)
+        else @Suppress("DEPRECATION") ao.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), ctx.packageName)
+        mode == AppOpsManager.MODE_ALLOWED
+    } catch (e: Exception) { false }
+
+    fun overlayOn(ctx: Context): Boolean = try { Settings.canDrawOverlays(ctx) } catch (e: Exception) { false }
+
+    fun batteryOk(ctx: Context): Boolean = try {
+        (ctx.getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(ctx.packageName)
+    } catch (e: Exception) { false }
 
     /** Hostname set as Private DNS, or "" when Private DNS is off/automatic. */
     fun privateDns(ctx: Context): String = try {
@@ -102,19 +144,37 @@ object Guard {
         if (mode == "hostname") Settings.Global.getString(ctx.contentResolver, "private_dns_specifier").orEmpty() else ""
     } catch (e: Exception) { "" }
 
+    /** A real family/adult filter, not just any Private DNS provider. */
+    fun filterOk(ctx: Context): Boolean {
+        val h = privateDns(ctx).lowercase()
+        if (h.isBlank()) return false
+        return ("cleanbrowsing" in h && ("family" in h || "adult" in h)) || ("adguard" in h && "family" in h)
+    }
+
     fun adminOn(ctx: Context): Boolean = try {
         (ctx.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager).isAdminActive(ComponentName(ctx, SeeFarAdmin::class.java))
     } catch (e: Exception) { false }
 
+    /** Is the service actually alive (heartbeat in the last 2 minutes)? */
+    fun alive(ctx: Context) = System.currentTimeMillis() - GuardStore.heartbeat(ctx) < 120_000L
+
     val LIMIT_LINES = listOf(
-        "Your social time is spent, monsieur. Go outside. Or read something with paragraphs.",
-        "Thirty minutes. Gone. Tomorrow, the feed will still be there, sadly.",
+        "Your social time is spent. Go outside. Or read something with paragraphs.",
+        "Thirty minutes. Gone. The feed will still be there tomorrow, sadly.",
         "Budget exhausted. The algorithm will have to miss you.",
     )
     val BAN_LINES = listOf(
         "That app is banned. You asked me to do this. Respect past you.",
         "Nope. Past you saw this coming and left me in charge.",
         "Blocked. Go do something your future self will thank you for.",
+    )
+    val BROWSER_LINES = listOf(
+        "Browser is closed while the web filter is off. Turn Private DNS back on, then try again.",
+        "No filter, no browser. Switch Private DNS back on.",
+    )
+    val NIGHT_LINES = listOf(
+        "Night lock. The phone's job now is to be asleep. Go to bed.",
+        "It's late. Nothing here will be better than sleep. Put the phone down.",
     )
 }
 
@@ -163,24 +223,37 @@ object GuardStore {
     fun setArmed(ctx: Context) = p(ctx).edit().putBoolean("armed", true).apply()
     fun dnsSeen(ctx: Context) = p(ctx).getBoolean("dnsSeen", false)
     fun setDnsSeen(ctx: Context) = p(ctx).edit().putBoolean("dnsSeen", true).apply()
+    fun heartbeat(ctx: Context) = p(ctx).getLong("hb", 0L)
+    fun beat(ctx: Context) = p(ctx).edit().putLong("hb", System.currentTimeMillis()).apply()
+    fun blocksToday(ctx: Context): Int { val s = p(ctx); return if (s.getString("bday", "") == today()) s.getInt("blocks", 0) else 0 }
+    fun addBlock(ctx: Context) {
+        val s = p(ctx)
+        val n = if (s.getString("bday", "") == today()) s.getInt("blocks", 0) else 0
+        s.edit().putString("bday", today()).putInt("blocks", n + 1).apply()
+    }
 }
 
-// ---------------------------------------------------------------- enforcement
+// ---------------------------------------------------------------- enforcement (no Accessibility, so banking apps keep working)
 
 /**
- * Sees only which app is on screen (no screen content, no typing). Enforces the daily social
- * budget and throws banned apps back to the home screen.
+ * Foreground service. Reads which app is in front from Usage Access (app name only, never screen
+ * content), then covers and exits banned / over-budget / unfiltered-browser / night-locked apps.
  */
-class SeeFarGuardService : AccessibilityService() {
+class GuardService : Service() {
     private val h = Handler(Looper.getMainLooper())
-    private var cur: String? = null
-    private var last = 0L
-    private var lastKick = 0L
+    private var fg: String? = null
+    private var lastQ = 0L
+    private var lastTick = 0L
     private var imePkg = ""
+    private var overlay: View? = null
     private var registered = false
+    private var lastBan = 0L
 
-    private val tick = object : Runnable {
-        override fun run() { onTick(); h.postDelayed(this, 3000) }
+    private val loop = object : Runnable {
+        override fun run() {
+            try { tick() } catch (e: Exception) { /* keep running */ }
+            h.postDelayed(this, 1500)
+        }
     }
 
     private val installs = object : BroadcastReceiver() {
@@ -188,121 +261,234 @@ class SeeFarGuardService : AccessibilityService() {
             val pkg = i.data?.schemeSpecificPart ?: return
             if (pkg == packageName) return
             Guard.forget(pkg)
-            if (Guard.isBanned(this@SeeFarGuardService, pkg)) {
-                Toast.makeText(this@SeeFarGuardService, "A banned app was installed. Uninstall it. Now.", Toast.LENGTH_LONG).show()
-                Notifs.post(this@SeeFarGuardService, "Banned app installed", "Uninstall it from the Guard screen. I'll throw you out of it anyway.", 7004)
-                try {
-                    startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$pkg")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                } catch (e: Exception) { /* notification above still stands */ }
+            if (Guard.isBanned(this@GuardService, pkg)) {
+                Notifs.post(this@GuardService, "Banned app installed", "Uninstall it from the Guard screen. It will not open anyway.", 7004, go = "guard")
+                try { startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:$pkg")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) { }
             }
         }
     }
 
-    override fun onServiceConnected() {
-        GuardStore.setArmed(this)
-        refreshIme()
+    override fun onBind(i: Intent?): IBinder? = null
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        startFg()
+        if (Guard.usageOn(this)) GuardStore.setArmed(this)
         if (!registered) {
             ContextCompat.registerReceiver(this, installs, IntentFilter(Intent.ACTION_PACKAGE_ADDED).apply { addDataScheme("package") }, ContextCompat.RECEIVER_NOT_EXPORTED)
             registered = true
         }
-        h.removeCallbacks(tick)
-        h.postDelayed(tick, 3000)
+        h.removeCallbacks(loop)
+        h.post(loop)
+        return START_STICKY
+    }
+
+    private fun startFg() {
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.createNotificationChannel(NotificationChannel("seefar_guard", "SeeFar Guard", NotificationManager.IMPORTANCE_MIN))
+        val open = android.app.PendingIntent.getActivity(
+            this, 1, Intent(this, MainActivity::class.java).putExtra("go", "guard"),
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val n: Notification = NotificationCompat.Builder(this, "seefar_guard")
+            .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
+            .setContentTitle("SeeFar Guard is on")
+            .setContentText("Keeping you on track.")
+            .setContentIntent(open).setOngoing(true).setPriority(NotificationCompat.PRIORITY_MIN).build()
+        if (Build.VERSION.SDK_INT >= 34) startForeground(7100, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        else startForeground(7100, n)
     }
 
     private fun refreshIme() {
         imePkg = try { Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)?.substringBefore('/').orEmpty() } catch (e: Exception) { "" }
     }
 
-    override fun onAccessibilityEvent(e: AccessibilityEvent?) {
-        if (e == null || e.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
-        val pkg = e.packageName?.toString() ?: return
-        if (pkg == "com.android.systemui" || pkg == "android" || pkg == imePkg || pkg == "com.lbe.security.miui") return
-        if (Guard.isBanned(this, pkg)) {
-            cur = null
-            kick(Guard.BAN_LINES.random())
-            return
+    private fun poll() {
+        val usm = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val now = System.currentTimeMillis()
+        val from = if (lastQ == 0L) now - 2 * 3600_000L else lastQ - 1500
+        val ev = usm.queryEvents(from, now)
+        val e = UsageEvents.Event()
+        while (ev.hasNextEvent()) {
+            ev.getNextEvent(e)
+            when (e.eventType) {
+                UsageEvents.Event.ACTIVITY_RESUMED -> fg = e.packageName
+                UsageEvents.Event.ACTIVITY_PAUSED -> if (e.packageName == fg) fg = null
+            }
         }
-        if (Guard.isLimited(pkg)) {
-            if (cur != pkg) { cur = pkg; last = System.currentTimeMillis() }
-            if (over()) kick(Guard.LIMIT_LINES.random())
-        } else {
-            cur = null
-        }
+        lastQ = now
     }
 
-    private fun over() = GuardStore.usedSec(this) >= GuardStore.limitMin(this) * 60
-
-    private fun onTick() {
+    private fun tick() {
+        GuardStore.beat(this)
+        if (!Guard.usageOn(this)) { fg = null; return }
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         val now = System.currentTimeMillis()
-        if (cur != null) {
-            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-            if (pm.isInteractive) {
-                val dt = ((now - last) / 1000L).toInt().coerceIn(0, 6)
-                if (dt > 0) GuardStore.addUsed(this, dt)
-                if (over()) kick(Guard.LIMIT_LINES.random())
-            }
-        } else refreshIme()
-        last = now
+        if (!pm.isInteractive) { lastTick = now; return }
+        poll()
+        if (imePkg.isEmpty()) refreshIme()
+        val pkg = fg
+        val dt = if (lastTick == 0L) 0 else ((now - lastTick) / 1000L).toInt().coerceIn(0, 5)
+        lastTick = now
+        if (pkg == null || pkg == packageName || pkg == imePkg || pkg == "com.android.systemui") return
+
+        if (Guard.isBanned(this, pkg)) return kick(Guard.BAN_LINES.random())
+        if (Guard.isNight() && Guard.isNightBlocked(pkg)) return kick(Guard.NIGHT_LINES.random())
+        if (Guard.isBrowser(pkg) && !Guard.filterOk(this)) return kick(Guard.BROWSER_LINES.random())
+        if (Guard.isLimited(pkg)) {
+            if (dt > 0) GuardStore.addUsed(this, dt)
+            if (GuardStore.usedSec(this) >= GuardStore.limitMin(this) * 60) kick(Guard.LIMIT_LINES.random())
+        }
     }
 
     private fun kick(msg: String) {
-        performGlobalAction(GLOBAL_ACTION_HOME)
         val now = System.currentTimeMillis()
-        if (now - lastKick > 2500) Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
-        lastKick = now
-        cur = null
+        if (now - lastBan < 1200) return
+        lastBan = now
+        GuardStore.addBlock(this)
+        fg = null
+        showOverlay(msg)
+        try {
+            startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: Exception) { }
     }
 
-    override fun onInterrupt() {}
+    private fun showOverlay(msg: String) {
+        if (!Guard.overlayOn(this)) { Toast.makeText(this, msg, Toast.LENGTH_LONG).show(); return }
+        hideOverlay()
+        val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setBackgroundColor(AColor.WHITE)
+            setPadding(64, 64, 64, 64)
+        }
+        box.addView(TextView(this).apply { text = "🛡"; textSize = 56f; gravity = Gravity.CENTER })
+        box.addView(TextView(this).apply { text = msg; textSize = 20f; setTextColor(AColor.parseColor("#3C3C3C")); gravity = Gravity.CENTER; setPadding(0, 24, 0, 24) })
+        box.addView(TextView(this).apply {
+            text = "OK"; textSize = 18f; setTextColor(AColor.WHITE); setBackgroundColor(AColor.parseColor("#58CC02")); gravity = Gravity.CENTER
+            setPadding(96, 28, 96, 28); setOnClickListener { hideOverlay() }
+        })
+        val lp = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.OPAQUE
+        )
+        try { wm.addView(box, lp); overlay = box; h.postDelayed({ hideOverlay() }, 4000) } catch (e: Exception) { }
+    }
+
+    private fun hideOverlay() {
+        overlay?.let { try { (getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(it) } catch (e: Exception) { } }
+        overlay = null
+    }
 
     override fun onDestroy() {
-        h.removeCallbacks(tick)
-        if (registered) { try { unregisterReceiver(installs) } catch (e: Exception) { } ; registered = false }
+        h.removeCallbacks(loop)
+        hideOverlay()
+        if (registered) { try { unregisterReceiver(installs) } catch (e: Exception) { }; registered = false }
         super.onDestroy()
+    }
+
+    companion object {
+        fun start(ctx: Context) {
+            try { ContextCompat.startForegroundService(ctx, Intent(ctx, GuardService::class.java)) } catch (e: Exception) { /* background start refused; opening the app restarts it */ }
+        }
+    }
+}
+
+class BootReceiver : BroadcastReceiver() {
+    override fun onReceive(c: Context, i: Intent) {
+        if (i.action == Intent.ACTION_BOOT_COMPLETED || i.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+            if (GuardStore.armed(c)) GuardService.start(c)
+            Rec.schedule(c)
+        }
     }
 }
 
 /** Declared with no powers. Its only job: Android refuses to uninstall SeeFar until this is switched off first. */
 class SeeFarAdmin : DeviceAdminReceiver()
 
-/** Every 15 min: if you switched the guard or the web filter off after setting them up, say so. */
+/** Every 15 min: if you switched the guard or the web filter off after setting them up, say so, and try to bring it back. */
 class GuardWatchWorker(ctx: Context, p: WorkerParameters) : Worker(ctx, p) {
     override fun doWork(): Result {
         val c = applicationContext
-        if (GuardStore.armed(c) && !Guard.accessibilityOn(c)) {
-            Notifs.post(c, "Guard is off", "You switched the guard off. Bold. Turn it back on: Settings > Accessibility > SeeFar.", 7002)
-        } else if (Guard.privateDns(c).isNotBlank()) {
-            GuardStore.setDnsSeen(c)
-        } else if (GuardStore.dnsSeen(c)) {
-            Notifs.post(c, "Web filter is off", "Private DNS is off, so the blocked sites are open again. Turn it back on.", 7003)
+        if (GuardStore.armed(c)) {
+            if (!Guard.usageOn(c)) Notifs.post(c, "Guard is off", "Usage access was switched off. Turn it back on: tap here.", 7002, go = "guard")
+            else if (!Guard.alive(c)) {
+                GuardService.start(c)
+                Notifs.post(c, "Guard stopped", "Android stopped the guard. Open SeeFar to restart it, and set battery to No restrictions.", 7002, go = "guard")
+            }
         }
+        if (Guard.filterOk(c)) GuardStore.setDnsSeen(c)
+        else if (GuardStore.dnsSeen(c)) Notifs.post(c, "Web filter is off", "Private DNS changed. Browsers stay closed until it is back.", 7003, go = "guard")
+        val bad = Guard.installedBanned(c)
+        if (bad.isNotEmpty()) Notifs.post(c, "Banned app still installed", bad.joinToString { it.second } + ". Uninstall it.", 7004, go = "guard")
         return Result.success()
     }
 }
 
 // ---------------------------------------------------------------- screen
 
-private const val DNS_HOST = "family-filter-dns.cleanbrowsing.org"
+const val DNS_HOST = "family-filter-dns.cleanbrowsing.org"
+
+fun openSettings(ctx: Context, i: Intent) {
+    try { ctx.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) {
+        Toast.makeText(ctx, "Could not open that screen on this phone.", Toast.LENGTH_LONG).show()
+    }
+}
+
+@Composable
+fun SetupStep(ok: Boolean, title: String, why: String, action: String, go: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(if (ok) "✅" else "⬜", fontSize = 22.sp)
+        Column(Modifier.weight(1f)) {
+            Text(title, color = C.text, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+            Text(why, color = C.dim, fontSize = 12.sp)
+        }
+        if (!ok) Pill(action) { go() }
+    }
+}
 
 @Composable
 fun GuardScreen(brain: Brain, close: () -> Unit) {
     val ctx = LocalContext.current
     var tick by remember { mutableStateOf(0) }
     var scan by remember { mutableStateOf(0) }
-    LaunchedEffect(Unit) { while (true) { delay(2000); tick++ } }
+    LaunchedEffect(Unit) { GuardService.start(ctx); while (true) { delay(2000); tick++ } }
 
     val used = remember(tick) { GuardStore.usedSec(ctx) }
     val limit = remember(tick) { GuardStore.limitMin(ctx) }
     val pending = remember(tick) { GuardStore.pending(ctx) }
-    val accOn = remember(tick) { Guard.accessibilityOn(ctx) }
+    val usage = remember(tick) { Guard.usageOn(ctx) }
+    val overlay = remember(tick) { Guard.overlayOn(ctx) }
+    val battery = remember(tick) { Guard.batteryOk(ctx) }
+    val alive = remember(tick) { Guard.alive(ctx) }
     val dns = remember(tick) { Guard.privateDns(ctx) }
+    val filter = remember(tick) { Guard.filterOk(ctx) }
     val admin = remember(tick) { Guard.adminOn(ctx) }
+    val blocks = remember(tick) { GuardStore.blocksToday(ctx) }
     val banned = remember(scan) { Guard.installedBanned(ctx) }
-
-    fun open(i: Intent) { try { ctx.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (e: Exception) { Toast.makeText(ctx, "Could not open that screen on this phone.", Toast.LENGTH_LONG).show() } }
+    val running = usage && overlay && alive
 
     Column(Modifier.padding(horizontal = 16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         TopBar("🛡 Guard", close)
+
+        Card {
+            Text(if (running) "Guard is ON" else "Guard is NOT running", color = if (running) C.green.deep() else C.red, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+            Text(if (running) "Blocked $blocks time${if (blocks == 1) "" else "s"} today." else "Finish the steps below. Each is a one-time switch.", color = C.dim, fontSize = 13.sp)
+            SetupStep(usage, "Usage access", "Lets me see which app is open. Not your screen, not your typing.", "Turn on") {
+                openSettings(ctx, Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+            }
+            SetupStep(overlay, "Display over other apps", "Lets me cover a blocked app and send you home.", "Turn on") {
+                openSettings(ctx, Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${ctx.packageName}")))
+            }
+            SetupStep(battery, "Battery: no restrictions", "Xiaomi kills background apps. Set SeeFar to No restrictions.", "Open") {
+                openSettings(ctx, Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+            }
+            Text("This does NOT use Accessibility, so your bank app works normally.", color = C.green.deep(), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            if (usage && !alive) Pill("Start guard") { GuardService.start(ctx); tick++ }
+            Pill("App info (Autostart, restricted settings)") { openSettings(ctx, Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${ctx.packageName}"))) }
+        }
 
         Card {
             Text("Social time today", color = C.dim, fontSize = 14.sp)
@@ -320,41 +506,21 @@ fun GuardScreen(brain: Brain, close: () -> Unit) {
         }
 
         Card {
-            Text("Enforcement", color = C.dim, fontSize = 14.sp)
-            Text(if (accOn) "ON. The limit and bans are being enforced." else "OFF. Nothing is enforced yet.", color = if (accOn) C.green else C.red, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            if (!accOn) {
-                Text(
-                    "1. Tap 'App info' → ⋮ (top right) → 'Allow restricted settings'. Android blocks sideloaded apps from this until you do.\n" +
-                        "2. Tap 'Turn on' → SeeFar → switch on.\n" +
-                        "It only sees which app is on screen. It cannot read your screens, messages or passwords.",
-                    color = C.text, fontSize = 14.sp
-                )
-                BigButton("1 · App info", C.card2, Modifier.fillMaxWidth()) { open(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${ctx.packageName}"))) }
-                BigButton("2 · Turn on", C.blue, Modifier.fillMaxWidth()) { open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
-            }
+            Text("Night lock · 23:00 to 05:00", color = C.dim, fontSize = 14.sp)
+            Text("Social, browsers, YouTube, Play Store, Telegram and Settings are shut. Calls, alarm, WhatsApp and your bank stay open.", color = C.text, fontSize = 14.sp)
+            Text(if (Guard.isNight()) "Active right now." else "Not active right now.", color = C.dim, fontSize = 12.sp)
         }
 
         Card {
-            Text("Banned apps", color = C.dim, fontSize = 14.sp)
-            Text(Guard.bannedNames, color = C.text, fontSize = 14.sp)
-            Text("Opened = thrown to the home screen. Installed = I nag you to uninstall. I can't stop a download itself.", color = C.dim, fontSize = 12.sp)
-            if (banned.isEmpty()) Text("None installed right now. Good.", color = C.green, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-            for ((pkg, name) in banned) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    Text("❌ $name", color = C.red, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    Pill("Uninstall") { open(Intent(Intent.ACTION_DELETE, Uri.parse("package:$pkg"))) }
-                }
-            }
-            Pill("Rescan") { scan++ }
-        }
-
-        Card {
-            Text("Web filter (chat and adult sites)", color = C.dim, fontSize = 14.sp)
-            Text(if (dns.isNotBlank()) "ON via $dns" else "OFF. Chat sites open in any browser.", color = if (dns.isNotBlank()) C.green else C.red, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-            if (dns.isBlank()) {
+            Text("Web filter (adult and chat sites)", color = C.dim, fontSize = 14.sp)
+            Text(
+                if (filter) "ON via $dns" else if (dns.isNotBlank()) "Private DNS is $dns, which is not a family filter. Browsers are closed." else "OFF. Browsers are closed until it is on.",
+                color = if (filter) C.green.deep() else C.red, fontSize = 17.sp, fontWeight = FontWeight.Bold
+            )
+            if (!filter) {
                 Text(
                     "Settings → Connection & sharing → Private DNS → 'Private DNS provider hostname' → paste the hostname below → Save.\n" +
-                        "In Chrome: Settings → Privacy and security → Use secure DNS → set to 'With your current service provider' or off, otherwise Chrome skips the filter.",
+                        "In Chrome: Settings → Privacy and security → Use secure DNS → 'With your current service provider', otherwise Chrome skips the filter.",
                     color = C.text, fontSize = 14.sp
                 )
                 Text(DNS_HOST, color = C.gold, fontSize = 15.sp, fontWeight = FontWeight.Bold)
@@ -363,23 +529,38 @@ fun GuardScreen(brain: Brain, close: () -> Unit) {
                         (ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("dns", DNS_HOST))
                         Toast.makeText(ctx, "Copied", Toast.LENGTH_SHORT).show()
                     }
-                    Pill("Open settings") { open(Intent(Settings.ACTION_WIRELESS_SETTINGS)) }
+                    Pill("Open settings") { openSettings(ctx, Intent(Settings.ACTION_WIRELESS_SETTINGS)) }
                 }
             }
-            Text("This list blocks adult sites plus proxy/VPN sites. I couldn't confirm Chatib is on it. After setup, try opening it. If it loads, tell me and we add a custom block list.", color = C.dim, fontSize = 12.sp)
+            Text("Browsers close whenever this is off, so turning it off to browse freely no longer works. Apps that don't use the system DNS can still bypass it.", color = C.dim, fontSize = 12.sp)
         }
 
         Card {
-            Text("Make it hard to remove", color = C.dim, fontSize = 14.sp)
-            Text(if (admin) "Uninstall lock: ON. To remove SeeFar you must first switch this off in Settings." else "Uninstall lock: OFF", color = if (admin) C.green else C.gold, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text("Banned apps", color = C.dim, fontSize = 14.sp)
+            Text(Guard.bannedNames, color = C.text, fontSize = 14.sp)
+            Text("Opened = covered and sent home. Installed = I nag you to uninstall. I can't stop a download itself.", color = C.dim, fontSize = 12.sp)
+            if (banned.isEmpty()) Text("None installed right now. Good.", color = C.green.deep(), fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            for ((pkg, name) in banned) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("❌ $name", color = C.red, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Pill("Uninstall") { openSettings(ctx, Intent(Intent.ACTION_DELETE, Uri.parse("package:$pkg"))) }
+                }
+            }
+            Pill("Rescan") { scan++ }
+        }
+
+        Card {
+            Text("Make it hard to undo", color = C.dim, fontSize = 14.sp)
+            Text(if (admin) "Uninstall lock: ON. Removing SeeFar means switching this off in Settings first." else "Uninstall lock: OFF", color = if (admin) C.green.deep() else C.gold, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             if (!admin) BigButton("Turn on uninstall lock", C.blue, Modifier.fillMaxWidth()) {
-                open(
+                openSettings(
+                    ctx,
                     Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
                         .putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, ComponentName(ctx, SeeFarAdmin::class.java))
                         .putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Stops SeeFar from being uninstalled in a weak moment. It gets no other powers.")
                 )
             }
-            Text("The strongest lock is not in any app: Settings → Apps → App lock. Lock the Play Store and Settings with a passcode someone you trust keeps. Without that, you can undo anything here when you want to.", color = C.dim, fontSize = 12.sp)
+            Text("Honest limit: anything you can switch on in Settings you can switch off in Settings. If you do, I notify you within 15 minutes. The real lock is a person: use Xiaomi Settings → Apps → App lock on Settings and the Play Store, with a passcode someone you trust keeps.", color = C.dim, fontSize = 12.sp)
         }
         Spacer(Modifier.height(24.dp))
     }

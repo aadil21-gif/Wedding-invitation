@@ -38,7 +38,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -76,14 +76,20 @@ class MainActivity : ComponentActivity() {
         if (brain.screen == "login") return
         when (go) {
             "french" -> brain.screen = "french"
-            "plan" -> { brain.screen = "home"; brain.planTomorrow() }
-            "talk" -> { brain.screen = "home"; if (brain.status == Status.Idle && Device.has(this, Manifest.permission.RECORD_AUDIO)) brain.micTap() }
+            "guard" -> brain.screen = "guard"
+            "daily" -> { brain.recSub = "daily"; brain.screen = "sos" }
+            "checkin" -> { brain.recSub = "checkin"; brain.screen = "sos" }
+            "sos" -> { brain.recSub = "urge"; brain.screen = "sos" }
+            "plan" -> { brain.screen = "talk"; brain.planTomorrow() }
+            "talk" -> { brain.screen = "talk"; if (brain.status == Status.Idle && Device.has(this, Manifest.permission.RECORD_AUDIO)) brain.micTap() }
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         brain.boot()
+        androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = true
+        androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightNavigationBars = true
         handleGo(intent)
         val needed = buildList {
             add(Manifest.permission.RECORD_AUDIO)
@@ -98,15 +104,25 @@ class MainActivity : ComponentActivity() {
         if (needed.isNotEmpty()) perms.launch(needed.toTypedArray())
 
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme(background = C.bg, surface = C.card, primary = C.blue)) {
-                Box(Modifier.fillMaxSize().background(C.bg).statusBarsPadding().navigationBarsPadding().imePadding()) {
-                    when (brain.screen) {
-                        "login" -> Login(brain)
-                        "home" -> Home(brain)
-                        "french" -> TutorScreen(brain, onExit = { brain.screen = "home" }, onLessons = { brain.screen = "lessons" })
-                        "lessons" -> CoachScreen(brain) { brain.screen = "french" }
-                        "guard" -> GuardScreen(brain) { brain.screen = "home" }
-                        else -> Text("SeeFar…", color = C.dim, modifier = Modifier.align(Alignment.Center), fontSize = 20.sp)
+            MaterialTheme(colorScheme = lightColorScheme(background = C.bg, surface = C.card, primary = C.blue, onSurface = C.text, onBackground = C.text)) {
+                Column(Modifier.fillMaxSize().background(C.bg).statusBarsPadding().navigationBarsPadding().imePadding()) {
+                    Box(Modifier.weight(1f).fillMaxWidth()) {
+                        when (brain.screen) {
+                            "login" -> Login(brain)
+                            "home" -> HomeV2(brain)
+                            "talk" -> Home(brain)
+                            "sos" -> RecoveryHome(brain)
+                            "me" -> SettingsScreen(brain) { brain.screen = "home" }
+                            "french" -> TutorScreen(brain, onExit = { brain.screen = "home" }, onLessons = { brain.screen = "lessons" })
+                            "lessons" -> CoachScreen(brain) { brain.screen = "french" }
+                            "guard" -> GuardScreen(brain) { brain.screen = "home" }
+                            else -> Text("SeeFar…", color = C.dim, modifier = Modifier.align(Alignment.Center), fontSize = 20.sp)
+                        }
+                    }
+                    if (brain.screen in setOf("home", "talk", "sos", "me", "guard")) NavBar(if (brain.screen == "talk") "home" else brain.screen) { k ->
+                        brain.stopAll()
+                        if (k == "sos") brain.recSub = "home"
+                        brain.screen = k
                     }
                 }
             }
@@ -115,6 +131,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (GuardStore.armed(this)) GuardService.start(this)
         // Keep the screen on only while hands-free is running.
         if (brain.live) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -263,12 +280,26 @@ fun SettingsScreen(brain: Brain, close: () -> Unit) {
     val ctx = LocalContext.current
     var tick by remember { mutableStateOf(0) }
     Column(Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        TopBar("Settings", close)
+        TopBar("Me", close)
+        androidx.compose.runtime.LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(1500); tick++ } }
         val notif = tick >= 0 && Device.hasNotificationAccess(ctx)
         val usage = tick >= 0 && Device.hasUsageAccess(ctx)
+        val ovl = tick >= 0 && Guard.overlayOn(ctx)
+        val bat = tick >= 0 && Guard.batteryOk(ctx)
+        val cal = tick >= 0 && Device.has(ctx, Manifest.permission.WRITE_CALENDAR)
+        val done = listOf(notif, usage, ovl, bat, cal).count { it }
+        Card {
+            Text("Setup · $done of 5 done", color = C.text, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
+            SetupStep(notif, "Read notifications", "So I can read your WhatsApp and SMS aloud. First: App info → ⋮ → Allow restricted settings.", "Turn on") { openSettings(ctx, android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+            SetupStep(usage, "Usage access", "Guard needs it to see which app is open.", "Turn on") { openSettings(ctx, android.content.Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
+            SetupStep(ovl, "Display over other apps", "Lets Guard cover a blocked app.", "Turn on") { openSettings(ctx, android.content.Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:${ctx.packageName}"))) }
+            SetupStep(bat, "Battery: no restrictions", "Stops Xiaomi from killing Guard.", "Open") { openSettings(ctx, android.content.Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+            SetupStep(cal, "Calendar", "So I can add and replace your planned schedule.", "Allow") { openSettings(ctx, android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${ctx.packageName}"))) }
+            Pill("App info (Allow restricted settings, Autostart)") { openSettings(ctx, android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${ctx.packageName}"))) }
+        }
         Card {
             Text("What I can do on this phone", color = C.text, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            Text("Calls and WhatsApp by contact name, timers, reminders, navigation, music. For WhatsApp I open the chat with your message ready; you tap send (Android does not let apps press send for you).", color = C.dim, fontSize = 14.sp)
+            Text("Calls and WhatsApp by contact name, timers, reminders, navigation, music. For WhatsApp I open the chat with your message ready and you tap send. Pressing buttons for you needs the Accessibility permission, which makes banking apps refuse to run, so I do not use it. Reading messages aloud works from notifications.", color = C.dim, fontSize = 14.sp)
         }
         Card {
             Text(if (notif) "🔔 Reading notifications: ON" else "🔔 Reading notifications: OFF", color = C.text, fontWeight = FontWeight.Bold, fontSize = 17.sp)

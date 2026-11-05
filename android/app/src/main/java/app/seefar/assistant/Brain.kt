@@ -39,7 +39,8 @@ class Brain(app: Application) : AndroidViewModel(app) {
     var cameraOn by mutableStateOf(false)
     var frontCamera by mutableStateOf(false)
     var live by mutableStateOf(false)
-    var nudgesOn by mutableStateOf(true)
+    var nudgesOn by mutableStateOf(false)
+    var recSub by mutableStateOf("home")
     var fastVoice by mutableStateOf(true)
 
     fun setFast(on: Boolean) {
@@ -61,9 +62,11 @@ class Brain(app: Application) : AndroidViewModel(app) {
 
     fun boot() {
         Api.init(ctx)
-        nudgesOn = ctx.getSharedPreferences("seefar_prefs", 0).getBoolean("nudges", true)
+        nudgesOn = ctx.getSharedPreferences("seefar_prefs", 0).getBoolean("nudges", false)
         fastVoice = ctx.getSharedPreferences("seefar_prefs", 0).getBoolean("fast", true)
         speaker.mode = if (fastVoice) "phone" else "auto"
+        Rec.schedule(ctx)
+        if (GuardStore.armed(ctx)) GuardService.start(ctx)
         WorkManager.getInstance(ctx).enqueueUniquePeriodicWork("guard-watch", ExistingPeriodicWorkPolicy.KEEP, PeriodicWorkRequestBuilder<GuardWatchWorker>(15, TimeUnit.MINUTES).build())
         run {
             val now = java.time.LocalDateTime.now()
@@ -255,7 +258,7 @@ class Brain(app: Application) : AndroidViewModel(app) {
         listener.stop(); speaker.stop()
         question = q; partial = ""; error = ""; chips.clear(); cards.clear()
         val items = Notifs.takeUnread(ctx)
-        val text = if (items.isEmpty()) "No new messages. Either you are very popular in silence, or very unpopular." else buildString {
+        val text = if (!Device.hasNotificationAccess(ctx)) "I can't see your notifications yet. Open Me, then Setup, and switch on Notification access for SeeFar. On this phone you may first need App info, the three dots, Allow restricted settings." else if (items.isEmpty()) "No new messages. Either you are very popular in silence, or very unpopular." else buildString {
             for ((app, from, x) in items.takeLast(8)) {
                 val body = if (x.contains("voice message", true) || x.startsWith("🎤")) "sent a voice message" else x.take(200)
                 append("On $app, $from: $body. ")
