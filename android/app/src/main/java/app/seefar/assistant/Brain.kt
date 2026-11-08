@@ -41,6 +41,7 @@ class Brain(app: Application) : AndroidViewModel(app) {
     var live by mutableStateOf(false)
     var nudgesOn by mutableStateOf(false)
     var recSub by mutableStateOf("home")
+    var trainSub by mutableStateOf("home")
     var fastVoice by mutableStateOf(true)
 
     fun setFast(on: Boolean) {

@@ -353,7 +353,7 @@ class GuardService : Service() {
     }
 
     private fun showOverlay(msg: String) {
-        if (!Guard.overlayOn(this)) { Toast.makeText(this, msg, Toast.LENGTH_LONG).show(); return }
+        if (!Guard.overlayOn(this)) { nag(msg); return }
         hideOverlay()
         val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         val box = LinearLayout(this).apply {
@@ -375,6 +375,23 @@ class GuardService : Service() {
             PixelFormat.OPAQUE
         )
         try { wm.addView(box, lp); overlay = box; h.postDelayed({ hideOverlay() }, 4000) } catch (e: Exception) { }
+    }
+
+    /** No overlay permission on this phone: a loud heads-up notification whose tap sends you home. */
+    private fun nag(msg: String) {
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.createNotificationChannel(NotificationChannel("seefar_block", "SeeFar blocks", NotificationManager.IMPORTANCE_HIGH))
+        val home = android.app.PendingIntent.getActivity(
+            this, 2, Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val n = NotificationCompat.Builder(this, "seefar_block")
+            .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
+            .setContentTitle("🛡 Blocked").setContentText(msg)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(msg))
+            .setPriority(NotificationCompat.PRIORITY_HIGH).setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setContentIntent(home).setFullScreenIntent(home, true).setAutoCancel(true).build()
+        try { nm.notify(7201, n) } catch (e: Exception) { }
     }
 
     private fun hideOverlay() {
@@ -468,7 +485,7 @@ fun GuardScreen(brain: Brain, close: () -> Unit) {
     val admin = remember(tick) { Guard.adminOn(ctx) }
     val blocks = remember(tick) { GuardStore.blocksToday(ctx) }
     val banned = remember(scan) { Guard.installedBanned(ctx) }
-    val running = usage && overlay && alive
+    val running = usage && alive
 
     Column(Modifier.padding(horizontal = 16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         TopBar("🛡 Guard", close)
@@ -479,7 +496,7 @@ fun GuardScreen(brain: Brain, close: () -> Unit) {
             SetupStep(usage, "Usage access", "Lets me see which app is open. Not your screen, not your typing.", "Turn on") {
                 openSettings(ctx, Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
             }
-            SetupStep(overlay, "Display over other apps", "Lets me cover a blocked app and send you home.", "Turn on") {
+            SetupStep(overlay, "Display over other apps (optional)", "If your phone has no such switch, skip it. Blocks then arrive as a loud notification.", "Turn on") {
                 openSettings(ctx, Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${ctx.packageName}")))
             }
             SetupStep(battery, "Battery: no restrictions", "Xiaomi kills background apps. Set SeeFar to No restrictions.", "Open") {
@@ -503,6 +520,12 @@ fun GuardScreen(brain: Brain, close: () -> Unit) {
             }
             Text("Lower takes effect now. Higher waits 24 hours, so you can't loosen it in a weak moment.", color = C.dim, fontSize = 12.sp)
             if (pending != null) Text("Pending: ${pending.first} min, starts in ${((pending.second - System.currentTimeMillis()) / 3600_000L).coerceAtLeast(0)} h.", color = C.gold, fontSize = 13.sp)
+        }
+
+        Card {
+            Text("Hard limits that need no permission", color = C.dim, fontSize = 14.sp)
+            Text("Without the overlay switch I can only nag, not force an app shut. Your phone's own tools can force it. Look in Settings for 'Digital Wellbeing' or 'App timers' and set Instagram, Facebook, TikTok to 15 to 30 minutes. For the part you can't undo, have someone you trust set it up and keep the passcode.", color = C.text, fontSize = 13.sp)
+            Pill("Search Settings") { openSettings(ctx, Intent(Settings.ACTION_SETTINGS)) }
         }
 
         Card {

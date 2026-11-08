@@ -139,7 +139,7 @@ fun TopBar(title: String, onBack: (() -> Unit)?, right: @Composable () -> Unit =
     }
 }
 
-val TABS = listOf("home" to ("🏠" to "Home"), "sos" to ("🆘" to "Help"), "guard" to ("🛡" to "Guard"), "french" to ("🇫🇷" to "French"), "me" to ("⚙" to "Me"))
+val TABS = listOf("home" to ("🏠" to "Home"), "sos" to ("🆘" to "Help"), "guard" to ("🛡" to "Guard"), "train" to ("🎮" to "Train"), "me" to ("⚙" to "Me"))
 
 @Composable
 fun NavBar(current: String, onGo: (String) -> Unit) {

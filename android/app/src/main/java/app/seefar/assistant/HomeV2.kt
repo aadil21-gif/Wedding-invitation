@@ -46,6 +46,13 @@ fun HomeV2(brain: Brain) {
             Spacer(Modifier.padding(3.dp))
             StatChip("⭐", "$xp", C.purple)
         }
+        Card {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Level ${xp / 100 + 1} · ${levelName(xp)}", color = C.text, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
+                Text("${xp % 100}/100 XP", color = C.dim, fontSize = 13.sp)
+            }
+            XpBar((xp % 100) / 100f)
+        }
         BigButton("🆘  I HAVE AN URGE", C.red, Modifier.fillMaxWidth()) { brain.recSub = "urge"; brain.screen = "sos" }
 
         if (ayah != null) Card {
@@ -59,7 +66,7 @@ fun HomeV2(brain: Brain) {
         Quest("🎙", "Talk to SeeFar", "Ask anything, read messages, plan tomorrow", C.blue) { brain.screen = "talk" }
         Quest(if (checked) "✅" else "📝", "Evening check-in", if (checked) "Done today. +5 XP" else "Two minutes. Mood, urges, one win", C.green) { brain.recSub = "checkin"; brain.screen = "sos" }
         Quest("🛡", "Guard", if (guardOn) "On · social $used of $limit min" else "Off · tap to switch it on", if (guardOn) C.green else C.red) { brain.screen = "guard" }
-        Quest("🇫🇷", "French with Madame Roast", "Talk it out, one on one", C.purple) { brain.stopAll(); brain.screen = "french" }
+        Quest("🎮", "Train", "Calm games and exercises · +XP", C.purple) { brain.trainSub = "home"; brain.screen = "train" }
         Quest("📅", "Plan tomorrow", "Replaces what I added before", C.gold) { brain.screen = "talk"; brain.planTomorrow() }
         Spacer(Modifier.height(16.dp))
     }

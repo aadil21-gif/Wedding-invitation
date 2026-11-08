@@ -112,6 +112,7 @@ class MainActivity : ComponentActivity() {
                             "home" -> HomeV2(brain)
                             "talk" -> Home(brain)
                             "sos" -> RecoveryHome(brain)
+                            "train" -> TrainHome(brain)
                             "me" -> SettingsScreen(brain) { brain.screen = "home" }
                             "french" -> TutorScreen(brain, onExit = { brain.screen = "home" }, onLessons = { brain.screen = "lessons" })
                             "lessons" -> CoachScreen(brain) { brain.screen = "french" }
@@ -119,9 +120,10 @@ class MainActivity : ComponentActivity() {
                             else -> Text("SeeFar…", color = C.dim, modifier = Modifier.align(Alignment.Center), fontSize = 20.sp)
                         }
                     }
-                    if (brain.screen in setOf("home", "talk", "sos", "me", "guard")) NavBar(if (brain.screen == "talk") "home" else brain.screen) { k ->
+                    if (brain.screen in setOf("home", "talk", "sos", "me", "guard", "train")) NavBar(if (brain.screen == "talk") "home" else brain.screen) { k ->
                         brain.stopAll()
                         if (k == "sos") brain.recSub = "home"
+                        if (k == "train") brain.trainSub = "home"
                         brain.screen = k
                     }
                 }
